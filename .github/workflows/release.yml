@@ -1,0 +1,39 @@
+name: Build release package
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Compile
+        run: python -m compileall -q ejercicio-9.py generala_plus tests
+
+      - name: Test
+        run: python -m unittest discover -s tests
+
+      - name: Build ZIP
+        shell: pwsh
+        run: .\scripts\build_release_zip.ps1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Generala-Plus-windows
+          path: release/Generala-Plus-windows.zip

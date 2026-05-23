@@ -1,0 +1,109 @@
+SCREEN_W = 1280
+SCREEN_H = 720
+WINDOW_W = 1152
+WINDOW_H = 648
+FPS = 60
+
+DICE_COUNT = 5
+MAX_ROLLS = 3
+ROLL_DURATION = 0.75
+ROLL_TICK = 0.055
+
+HEADER_H = 70
+DIE_SIZE = 88
+DIE_GAP = 22
+DICE_TOP = 228
+DICE_Y = DICE_TOP + DIE_SIZE // 2
+BUTTON_W = 220
+BUTTON_H = 54
+SCORECARD_Y = 480
+ROW_H = 14
+COL_CAT = 220
+COL_PLAYER = 150
+
+C_BG_DEEP = (5, 5, 5)
+C_BG_PANEL = (11, 11, 13)
+C_BG_ELEVATED = (21, 21, 21)
+C_BORDER_SUBTLE = (35, 35, 35)
+C_BORDER_ACTIVE = (201, 201, 201)
+C_GRAY_DARK = (56, 56, 56)
+C_GRAY_MID = (110, 110, 110)
+C_GRAY_LIGHT = (184, 184, 184)
+C_WHITE_SOFT = (244, 241, 234)
+C_WHITE = (255, 255, 255)
+C_GOLD = (198, 161, 91)
+C_RED_ERROR = (139, 30, 30)
+C_GREEN_SUCCESS = (229, 226, 218)
+C_SHADOW = (0, 0, 0)
+
+COLOR_BLACK_ABS = (5, 5, 5)
+COLOR_BLACK_CASINO = (11, 11, 13)
+COLOR_GRAPHITE = (21, 21, 21)
+COLOR_CHARCOAL = (35, 35, 35)
+COLOR_MID_GRAY = (110, 110, 110)
+COLOR_LIGHT_GRAY = (184, 184, 184)
+COLOR_WARM_WHITE = (244, 241, 234)
+COLOR_PREMIUM_SILVER = (201, 201, 201)
+COLOR_PLATINUM = (229, 226, 218)
+COLOR_CHAMPAGNE = (198, 161, 91)
+COLOR_CASINO_RED = (139, 30, 30)
+COLOR_TABLE_GREEN = (15, 26, 20)
+
+COLORS = {
+    "black_abs": COLOR_BLACK_ABS,
+    "black_casino": COLOR_BLACK_CASINO,
+    "graphite": COLOR_GRAPHITE,
+    "charcoal": COLOR_CHARCOAL,
+    "mid_gray": COLOR_MID_GRAY,
+    "light_gray": COLOR_LIGHT_GRAY,
+    "warm_white": COLOR_WARM_WHITE,
+    "pure_white": C_WHITE,
+    "silver": COLOR_PREMIUM_SILVER,
+    "platinum": COLOR_PLATINUM,
+    "champagne": COLOR_CHAMPAGNE,
+    "casino_red": COLOR_CASINO_RED,
+    "table_green": COLOR_TABLE_GREEN,
+}
+
+SPACING = {
+    "outer": 32,
+    "xs": 8,
+    "sm": 16,
+    "md": 24,
+    "lg": 32,
+    "xl": 48,
+}
+
+RADIUS = {
+    "panel": 20,
+    "card": 18,
+    "button": 14,
+    "dice": 16,
+    "chip": 999,
+}
+
+SHADOWS = {
+    "panel": (0, 0, 0, 150),
+    "card": (0, 0, 0, 180),
+    "button": (255, 255, 255, 24),
+}
+
+ANIMATION_SPEEDS = {
+    "fast": 0.12,
+    "normal": 0.22,
+    "banner": 1.6,
+}
+
+HEADER_RECT = (0, 0, 1280, 76)
+LEFT_PANEL = (24, 92, 260, 604)
+CENTER_PANEL = (308, 92, 640, 604)
+RIGHT_PANEL = (972, 92, 284, 604)
+
+STATUS_RECT = (340, 94, 580, 32)
+PLAY_BANNER_RECT = (352, 140, 560, 64)
+SCORE_SHEET_RECT = (396, 480, 520, 220)
+
+MARKET_CARD_W = 238
+MARKET_CARD_H = 94
+HAND_CARD_W = 196
+HAND_CARD_H = 76
