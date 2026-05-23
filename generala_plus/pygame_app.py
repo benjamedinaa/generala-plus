@@ -2647,15 +2647,28 @@ class Generala:
 
     def draw_online_waiting(self, snap):
         self.draw_header_bar_title("GENERALA PLUS")
-        panel = pygame.Rect(340, 230, 600, 230)
+        panel = pygame.Rect(318, 200, 644, 330)
         premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_ACTIVE, radius=22, alpha=230, glow=True)
-        title = self.font_turn.render("ESPERANDO MESA", True, C_WHITE_SOFT)
-        self.canvas.blit(title, title.get_rect(center=(panel.centerx, panel.y + 72)))
+        title = self.font_turn.render("MESA ONLINE CREADA", True, C_WHITE_SOFT)
+        self.canvas.blit(title, title.get_rect(center=(panel.centerx, panel.y + 62)))
         msg = snap.get("error") or snap.get("info") or self.online_message
-        text = self.font_body.render(trim_text(msg, self.font_body, panel.w - 80), True, C_GRAY_LIGHT)
-        self.canvas.blit(text, text.get_rect(center=(panel.centerx, panel.y + 128)))
-        hint = self.font_hint.render("ESC vuelve al menu online", True, C_GRAY_MID)
-        self.canvas.blit(hint, hint.get_rect(center=(panel.centerx, panel.y + 176)))
+        status_color = C_RED_ERROR if snap.get("error") else C_GOLD
+        text = self.font_body.render(trim_text(msg, self.font_body, panel.w - 80), True, status_color)
+        self.canvas.blit(text, text.get_rect(center=(panel.centerx, panel.y + 118)))
+        lines = [
+            f"Tu nombre: {self.online_name_field.value('Jugador')}",
+            f"Personaje: {CHARACTER_BY_KEY[self.online_character_key].name}",
+            f"IP para tu amigo: {self.local_ip_hint()}",
+            "Puerto: 8765",
+            "Si no estan en la misma Wi-Fi, usen Radmin VPN, Hamachi o ZeroTier.",
+        ]
+        y = panel.y + 158
+        for line in lines:
+            rendered = self.font_hint.render(trim_text(line, self.font_hint, panel.w - 90), True, C_GRAY_LIGHT)
+            self.canvas.blit(rendered, rendered.get_rect(center=(panel.centerx, y)))
+            y += 24
+        hint = self.font_hint_bold.render("ESC cancela y vuelve al menu online", True, C_GRAY_MID)
+        self.canvas.blit(hint, hint.get_rect(center=(panel.centerx, panel.bottom - 36)))
 
     def draw_header_bar_title(self, title_text):
         header = pygame.Rect(HEADER_RECT)

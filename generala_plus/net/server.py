@@ -6,6 +6,7 @@ from ..core import GeneralaEngine
 from ..core.actions import Action
 from ..core.engine import InvalidAction
 from ..rules import build_deck
+from .logging_utils import get_online_logger
 from .protocol import ACTION, ERROR, HELLO, INFO, STATE, WELCOME, Message
 from .wire import read_message, send_message
 
@@ -53,6 +54,7 @@ class OnlineServer:
         self.lock = threading.RLock()
         self.running = True
         self.server_socket = None
+        self.logger = get_online_logger("server")
 
     def serve_forever(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
@@ -63,6 +65,7 @@ class OnlineServer:
             server.settimeout(0.5)
             print(f"Generala Plus Online escuchando en {self.host}:{self.port}")
             print("Esperando 2 jugadores...")
+            self.logger.info("Servidor escuchando en %s:%s", self.host, self.port)
             while self.running and len(self.clients) < 2:
                 try:
                     conn, address = server.accept()
@@ -82,8 +85,10 @@ class OnlineServer:
                 send_message(file, Message(WELCOME, {"player_index": slot.index, "name": slot.name}))
                 self.broadcast(Message(INFO, {"text": f"{slot.name} se unio a la mesa."}))
                 print(f"{slot.name} conectado desde {address}")
+                self.logger.info("Cliente conectado: %s desde %s con personaje %s", slot.name, address, slot.character_key)
             if not self.running or len(self.clients) < 2:
                 self.close_clients()
+                self.logger.info("Servidor cerrado antes de iniciar partida.")
                 return
             self.start_game()
             threads = [threading.Thread(target=self.client_loop, args=(client,), daemon=True) for client in self.clients]
@@ -92,6 +97,7 @@ class OnlineServer:
             for thread in threads:
                 thread.join()
         self.server_socket = None
+        self.logger.info("Servidor finalizado.")
 
     def stop(self):
         self.running = False
@@ -113,6 +119,7 @@ class OnlineServer:
     def start_game(self):
         names = [client.name for client in self.clients]
         characters = [client.character_key for client in self.clients]
+        self.logger.info("Iniciando partida online: %s", ", ".join(names))
         self.engine = GeneralaEngine.new_game(names, character_keys=characters, seed=self.seed)
         self.engine.state.deck = [card for card in build_deck() if card in ONLINE_CARD_POOL]
         self.engine.random.shuffle(self.engine.state.deck)
@@ -144,8 +151,10 @@ class OnlineServer:
                 raise InvalidAction("El cliente intento actuar como otro jugador.")
             with self.lock:
                 self.engine.apply(action)
+                self.logger.info("Accion %s de jugador %s aplicada.", action.kind, client.index)
                 self.broadcast_state()
         except Exception as exc:
+            self.logger.warning("Accion rechazada para %s: %s", client.name, exc)
             self.send_error(client, str(exc))
 
     def broadcast_state(self):

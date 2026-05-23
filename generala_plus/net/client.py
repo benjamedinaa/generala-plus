@@ -3,6 +3,7 @@ import socket
 import threading
 
 from .commands import HELP_TEXT, format_state, parse_command
+from .logging_utils import get_online_logger
 from .protocol import ERROR, HELLO, INFO, STATE, WELCOME, action_message, Message
 from .wire import read_message, send_message
 
@@ -17,6 +18,7 @@ class OnlineClient:
         self.file = None
         self.running = True
         self.last_state = None
+        self.logger = get_online_logger("terminal_client")
 
     def run(self):
         try:
@@ -25,11 +27,13 @@ class OnlineClient:
             print(f"No pude conectar con {self.host}:{self.port}.")
             print(f"Detalle: {exc}")
             print("Revisa IP, VPN/LAN, firewall y que el host tenga abierto el servidor.")
+            self.logger.warning("No se pudo conectar a %s:%s: %s", self.host, self.port, exc)
             return
 
         with sock:
             self.file = sock.makefile("rw", encoding="utf-8", newline="\n")
             send_message(self.file, Message(HELLO, {"name": self.name, "character_key": self.character_key}))
+            self.logger.info("Cliente terminal conectado a %s:%s como %s", self.host, self.port, self.name)
             listener = threading.Thread(target=self.listen_loop, daemon=True)
             listener.start()
             print(HELP_TEXT)

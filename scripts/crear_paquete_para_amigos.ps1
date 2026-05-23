@@ -3,7 +3,15 @@ $ErrorActionPreference = "Stop"
 $scripts = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent $scripts
 $distRoot = Join-Path $root "dist"
-$package = Join-Path $distRoot "Generala Plus"
+$versionFile = Join-Path $root "generala_plus\version.py"
+$version = "dev"
+if (Test-Path $versionFile) {
+    $versionLine = Select-String -Path $versionFile -Pattern 'VERSION\s*=\s*"([^"]+)"' | Select-Object -First 1
+    if ($versionLine -and $versionLine.Matches.Count -gt 0) {
+        $version = $versionLine.Matches[0].Groups[1].Value
+    }
+}
+$package = Join-Path $distRoot "Generala Plus v$version"
 $resolvedRoot = (Resolve-Path -LiteralPath $root).Path
 
 if (Test-Path $package) {
@@ -23,6 +31,7 @@ $items = @(
     "scripts",
     "requirements.txt",
     "README.md",
+    "LEEME - COMO JUGAR.txt",
     "ejercicio-9.py",
     "Jugar Generala Plus.bat",
     "Host Online Generala Plus.bat",

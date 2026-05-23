@@ -61,7 +61,7 @@ Tambien puedes generar un ZIP listo para mandar:
 .\scripts\build_release_zip.ps1
 ```
 
-El archivo queda en `release/Generala-Plus-windows.zip`.
+El archivo queda en `release/Generala-Plus-vX.Y.Z-windows.zip`.
 
 Por ahora el paquete usa Python instalado en la maquina de cada amigo. Si quieres compartirlo con gente que no tiene Python, el siguiente paso natural seria empaquetarlo como `.exe` con PyInstaller.
 
@@ -91,6 +91,8 @@ Guia paso a paso para jugar con un amigo:
 ```text
 docs/jugar_con_un_amigo.md
 ```
+
+El paquete tambien incluye `LEEME - COMO JUGAR.txt` para mandarle instrucciones simples a tus amigos.
 
 La version tecnica por consola tambien acepta estos comandos:
 

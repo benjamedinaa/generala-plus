@@ -86,3 +86,4 @@ salir                  cierra el cliente
 - El rival no ve tu mano completa, solo cuantas cartas tenes.
 - El mercado online evita cartas que todavia requieren UI compleja.
 - Si Windows Firewall pregunta, permiti Python en redes privadas.
+- Si algo falla, revisa `logs/online.log`.

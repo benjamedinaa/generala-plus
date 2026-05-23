@@ -1,0 +1,57 @@
+GENERALA PLUS
+==============
+
+VERSION
+v0.5.0
+
+COMO ABRIR EL JUEGO
+1. Abrir "Jugar Generala Plus.bat".
+2. Esperar a que instale pygame si hace falta.
+3. Jugar en LOCAL u ONLINE desde el menu principal.
+
+MODO LOCAL
+- Elegi nombres.
+- Elegi Modo Clasico o Modo Plus.
+- En Plus, elegi personajes.
+- Presiona LOCAL para empezar.
+
+MODO ONLINE
+El modo online usa la misma mesa visual que el modo local.
+
+SI VOS HOSTEAS
+1. Abrir "Jugar Generala Plus.bat".
+2. Entrar a ONLINE.
+3. Escribir tu nombre.
+4. Elegir personaje.
+5. Presionar HOSTEAR.
+6. Pasarle a tu amigo una de las IP que aparecen en pantalla.
+
+SI TU AMIGO SE UNE
+1. Abrir "Jugar Generala Plus.bat".
+2. Entrar a ONLINE.
+3. Escribir su nombre.
+4. Escribir tu IP en "IP del host".
+5. Elegir personaje.
+6. Presionar UNIRSE.
+
+IMPORTANTE PARA ONLINE
+- Si estan en la misma Wi-Fi, usen la IP local del host.
+- Si no estan en la misma Wi-Fi, usen Radmin VPN, Hamachi o ZeroTier.
+- Puerto usado: 8765.
+- Si Windows Firewall pregunta, permitir Python en redes privadas.
+
+CONTROLES
+- Click en dado: retener/liberar.
+- Click derecho en dado: soltar todos.
+- Espacio: tirar dados.
+- Teclas 1-5: seleccionar dados.
+- L: soltar todos.
+- H: ayuda.
+- ESC: pausa o salir del online.
+- F11: pantalla completa.
+
+SI ALGO FALLA
+- Revisar que ambos tengan la misma version.
+- Revisar IP y VPN.
+- Revisar Firewall.
+- Mirar el archivo logs/online.log si existe.

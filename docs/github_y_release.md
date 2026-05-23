@@ -11,7 +11,7 @@ El proyecto esta preparado para control de versiones y para generar un ZIP compa
 Salida:
 
 ```text
-release/Generala-Plus-windows.zip
+release/Generala-Plus-vX.Y.Z-windows.zip
 ```
 
 Ese ZIP contiene el juego, launchers, assets, audio, docs y el online basico.
@@ -45,4 +45,4 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-El workflow de GitHub Actions crea un artifact con el ZIP. Tambien puedes subir manualmente `release/Generala-Plus-windows.zip` a una GitHub Release.
+El workflow de GitHub Actions crea un artifact con el ZIP. Tambien puedes subir manualmente el ZIP de `release/` a una GitHub Release.

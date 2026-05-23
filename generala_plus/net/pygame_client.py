@@ -1,6 +1,7 @@
 import socket
 import threading
 
+from .logging_utils import get_online_logger
 from .protocol import ERROR, HELLO, INFO, STATE, WELCOME, action_message, Message
 from .wire import read_message, send_message
 
@@ -21,6 +22,7 @@ class PygameOnlineClient:
         self.file = None
         self.lock = threading.RLock()
         self.thread = None
+        self.logger = get_online_logger("pygame_client")
 
     def connect(self):
         self.sock = socket.create_connection((self.host, self.port), timeout=10)
@@ -28,6 +30,7 @@ class PygameOnlineClient:
         send_message(self.file, Message(HELLO, {"name": self.name, "character_key": self.character_key}))
         self.running = True
         self.connected = True
+        self.logger.info("Cliente Pygame conectado a %s:%s como %s (%s)", self.host, self.port, self.name, self.character_key)
         self.thread = threading.Thread(target=self._listen, daemon=True)
         self.thread.start()
 
@@ -39,11 +42,13 @@ class PygameOnlineClient:
                 with self.lock:
                     self.error = f"Conexion cerrada: {exc}"
                     self.connected = False
+                self.logger.warning("Conexion cerrada con error: %s", exc)
                 break
             if message is None:
                 with self.lock:
                     self.error = "Conexion cerrada."
                     self.connected = False
+                self.logger.info("Conexion cerrada por servidor.")
                 break
             with self.lock:
                 if message.type == WELCOME:
@@ -53,6 +58,7 @@ class PygameOnlineClient:
                     self.state = message.payload
                 elif message.type == ERROR:
                     self.error = str(message.payload.get("text", "Error online."))
+                    self.logger.warning("Error del servidor: %s", self.error)
                 elif message.type == INFO:
                     self.info = str(message.payload.get("text", ""))
 
@@ -61,11 +67,13 @@ class PygameOnlineClient:
             return False
         try:
             send_message(self.file, action_message(action))
+            self.logger.info("Accion enviada: %s", action.kind)
             return True
         except OSError as exc:
             with self.lock:
                 self.error = f"No se pudo enviar accion: {exc}"
                 self.connected = False
+            self.logger.warning("No se pudo enviar accion: %s", exc)
             return False
 
     def snapshot(self):
