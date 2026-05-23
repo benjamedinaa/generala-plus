@@ -36,4 +36,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Generala-Plus-windows
-          path: release/Generala-Plus-windows.zip
+          path: release/Generala-Plus-v*-windows.zip

@@ -7,19 +7,22 @@ El modo online funciona dentro del juego, usa la misma mesa visual del modo loca
 ### En tu PC
 
 1. Abri `Jugar Generala Plus.bat`.
-2. En el menu principal elegi `ONLINE`.
-3. Escribi tu nombre.
-4. Presiona `HOSTEAR`.
-5. Pasale a tu amigo tu IPv4 local. Normalmente se ve parecida a `192.168.0.15` o `192.168.1.20`.
+2. En el menu principal elegi `MODO CLASICO` o `MODO PLUS`.
+3. Elegi `JUGAR ONLINE`.
+4. Escribi tu nombre.
+5. Si elegiste Plus, elegi tu personaje.
+6. Presiona `HOSTEAR`.
+7. Pasale a tu amigo tu IPv4 local. Normalmente se ve parecida a `192.168.0.15` o `192.168.1.20`.
 
 ### En la PC de tu amigo
 
 1. Tu amigo abre `Jugar Generala Plus.bat`.
-2. Entra a `ONLINE`.
+2. Entra a `JUGAR ONLINE`.
 3. Escribe su nombre.
 4. En `IP del host`, escribe la IPv4 que le pasaste.
-5. Presiona `UNIRSE`.
-6. Cuando entren los dos jugadores, empieza la mesa.
+5. Si la mesa es Plus, elige personaje.
+6. Presiona `UNIRSE`.
+7. Cuando entren los dos jugadores, empieza la mesa.
 
 Puerto usado: `8765`.
 
@@ -34,9 +37,9 @@ La forma mas simple es usar una VPN de LAN virtual:
 Pasos:
 
 1. Ambos entran a la misma red virtual.
-2. Vos abris el juego, entras a `ONLINE` y presionas `HOSTEAR`.
+2. Vos abris el juego, elegis `MODO CLASICO` o `MODO PLUS`, entras a `JUGAR ONLINE` y presionas `HOSTEAR`.
 3. Le pasas a tu amigo tu IP de la VPN.
-4. Tu amigo abre el juego, entra a `ONLINE`, usa esa IP y presiona `UNIRSE`.
+4. Tu amigo abre el juego, entra a `JUGAR ONLINE`, usa esa IP y presiona `UNIRSE`.
 
 Abrir puertos en el router tambien sirve, pero suele ser mas molesto y depende de cada proveedor de internet.
 
@@ -83,7 +86,9 @@ salir                  cierra el cliente
 ## Notas
 
 - El servidor es la fuente de verdad: los clientes no deciden los dados.
+- El modo de la mesa lo decide el host desde el menu principal: Clasico o Plus.
 - El rival no ve tu mano completa, solo cuantas cartas tenes.
 - El mercado online evita cartas que todavia requieren UI compleja.
 - Si Windows Firewall pregunta, permiti Python en redes privadas.
+- Si aparece un error de conexion tipo `WinError`, espera un segundo, confirma que el host ya este escuchando y revisa IP, VPN y Firewall.
 - Si algo falla, revisa `logs/online.log`.

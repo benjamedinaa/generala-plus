@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 
 from .logging_utils import get_online_logger
 from .protocol import ERROR, HELLO, INFO, STATE, WELCOME, action_message, Message
@@ -24,8 +25,19 @@ class PygameOnlineClient:
         self.thread = None
         self.logger = get_online_logger("pygame_client")
 
-    def connect(self):
-        self.sock = socket.create_connection((self.host, self.port), timeout=10)
+    def connect(self, attempts=1, delay=0.25):
+        last_error = None
+        for attempt in range(max(1, attempts)):
+            try:
+                self.sock = socket.create_connection((self.host, self.port), timeout=10)
+                break
+            except OSError as exc:
+                last_error = exc
+                self.logger.warning("Intento de conexion %s/%s fallido a %s:%s: %s", attempt + 1, attempts, self.host, self.port, exc)
+                if attempt < attempts - 1:
+                    time.sleep(delay)
+        else:
+            raise last_error
         self.file = self.sock.makefile("rw", encoding="utf-8", newline="\n")
         send_message(self.file, Message(HELLO, {"name": self.name, "character_key": self.character_key}))
         self.running = True

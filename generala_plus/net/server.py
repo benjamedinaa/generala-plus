@@ -45,10 +45,11 @@ class ClientSlot:
 
 
 class OnlineServer:
-    def __init__(self, host="0.0.0.0", port=8765, seed=None):
+    def __init__(self, host="0.0.0.0", port=8765, seed=None, plus_mode=True):
         self.host = host
         self.port = port
         self.seed = seed
+        self.plus_mode = plus_mode
         self.clients = []
         self.engine = None
         self.lock = threading.RLock()
@@ -65,7 +66,7 @@ class OnlineServer:
             server.settimeout(0.5)
             print(f"Generala Plus Online escuchando en {self.host}:{self.port}")
             print("Esperando 2 jugadores...")
-            self.logger.info("Servidor escuchando en %s:%s", self.host, self.port)
+            self.logger.info("Servidor escuchando en %s:%s modo=%s", self.host, self.port, "plus" if self.plus_mode else "clasico")
             while self.running and len(self.clients) < 2:
                 try:
                     conn, address = server.accept()
@@ -120,14 +121,15 @@ class OnlineServer:
         names = [client.name for client in self.clients]
         characters = [client.character_key for client in self.clients]
         self.logger.info("Iniciando partida online: %s", ", ".join(names))
-        self.engine = GeneralaEngine.new_game(names, character_keys=characters, seed=self.seed)
-        self.engine.state.deck = [card for card in build_deck() if card in ONLINE_CARD_POOL]
-        self.engine.random.shuffle(self.engine.state.deck)
-        self.engine.state.market = []
-        self.engine.state.discard = []
-        for player in self.engine.state.players:
-            player.offered_market_cards.clear()
-        self.engine.fill_market_for_active_player(record_offer=True)
+        self.engine = GeneralaEngine.new_game(names, plus_mode=self.plus_mode, character_keys=characters, seed=self.seed)
+        if self.plus_mode:
+            self.engine.state.deck = [card for card in build_deck() if card in ONLINE_CARD_POOL]
+            self.engine.random.shuffle(self.engine.state.deck)
+            self.engine.state.market = []
+            self.engine.state.discard = []
+            for player in self.engine.state.players:
+                player.offered_market_cards.clear()
+            self.engine.fill_market_for_active_player(record_offer=True)
         self.broadcast_state()
 
     def client_loop(self, client):
@@ -184,8 +186,9 @@ def main(argv=None):
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--classic", action="store_true", help="Hostea una mesa online de Generala clasica.")
     args = parser.parse_args(argv)
-    OnlineServer(args.host, args.port, seed=args.seed).serve_forever()
+    OnlineServer(args.host, args.port, seed=args.seed, plus_mode=not args.classic).serve_forever()
 
 
 if __name__ == "__main__":

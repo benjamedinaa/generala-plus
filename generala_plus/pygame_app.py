@@ -417,8 +417,8 @@ class Generala:
 
         self.roll_button = Button((500, 340, 280, 56), "TIRAR DADOS")
         self.release_button = Button((397, 412, 150, 42), "SOLTAR", "secondary")
-        self.start_button = Button((380, 570, 250, 58), "LOCAL")
-        self.online_button = Button((650, 570, 250, 58), "ONLINE", "secondary")
+        self.start_button = Button((380, 570, 250, 58), "JUGAR LOCAL")
+        self.online_button = Button((650, 570, 250, 58), "JUGAR ONLINE", "secondary")
         self.online_host_button = Button((380, 430, 250, 52), "HOSTEAR")
         self.online_join_button = Button((650, 430, 250, 52), "UNIRSE", "secondary")
         self.online_char_button = Button((380, 486, 520, 54), "PERSONAJE", "secondary")
@@ -705,7 +705,7 @@ class Generala:
                 self.start_online_host_and_join()
             if self.online_join_button.handle_event(event, pos):
                 self.start_online_join()
-            if self.online_char_button.handle_event(event, pos):
+            if self.plus_mode and self.online_char_button.handle_event(event, pos):
                 self.cycle_online_character()
             if self.online_back_button.handle_event(event, pos):
                 self.state = "start"
@@ -892,7 +892,7 @@ class Generala:
     def start_online_host_and_join(self):
         self.close_online()
         self.online_message = "Abriendo servidor local..."
-        self.online_server = OnlineServer("0.0.0.0", 8765)
+        self.online_server = OnlineServer("0.0.0.0", 8765, plus_mode=self.plus_mode)
         self.online_server_thread = threading.Thread(target=self.online_server.serve_forever, daemon=True)
         self.online_server_thread.start()
         self.start_online_join(host_override="127.0.0.1")
@@ -902,9 +902,9 @@ class Generala:
         name = self.online_name_field.value("Jugador")
         self.online_client = PygameOnlineClient(host, 8765, name, character_key=self.online_character_key)
         try:
-            self.online_client.connect()
+            self.online_client.connect(attempts=12 if host_override else 1, delay=0.25)
         except OSError as exc:
-            self.online_message = f"No pude conectar: {exc}"
+            self.online_message = self.format_connection_error(exc)
             self.online_client = None
             return
         self.online_message = "Conectando con la mesa..."
@@ -915,8 +915,16 @@ class Generala:
             return {"state": None, "player_index": None, "info": self.online_message, "error": "", "connected": False}
         return self.online_client.snapshot()
 
+    def format_connection_error(self, exc):
+        text = str(exc)
+        if "10061" in text or "actively refused" in text.lower() or "rechaz" in text.lower():
+            return "No pude conectar. El host no esta abierto todavia o Firewall bloqueo Python."
+        if "timed out" in text.lower() or "10060" in text:
+            return "Conexion agotada. Revisa IP, VPN, Wi-Fi o puerto 8765."
+        return f"No pude conectar: {text}"
+
     def sync_online_state_to_local_view(self, state):
-        self.plus_mode = True
+        self.plus_mode = bool(state.get("plus_mode", True))
         self.players = []
         for data in state["players"]:
             player = Player(
@@ -2524,6 +2532,8 @@ class Generala:
         self.canvas.blit(subtitle, subtitle.get_rect(center=(SCREEN_W // 2, 150)))
         panel = pygame.Rect(326, 215, 628, 440)
         premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_SUBTLE, radius=20, alpha=226, glow=False)
+        selected_label = "MODO SELECCIONADO"
+        self.canvas.blit(self.font_hint_bold.render(selected_label, True, C_GRAY_MID), (panel.x + 54, panel.y + 202))
         for field in self.fields:
             field.draw(self.canvas, self.font_label, self.font_body)
         mode_rect = self.mode_button.rect
@@ -2564,6 +2574,8 @@ class Generala:
             hint_text = "Click en personaje para cambiar   H ayuda   F11 pantalla   ESC salir"
         else:
             hint_text = "H ayuda   F11 pantalla   ESC salir"
+            classic_note = self.font_hint.render("Generala clasica: dados, 3 tiradas y planilla pura.", True, C_GRAY_LIGHT)
+            self.canvas.blit(classic_note, classic_note.get_rect(center=(SCREEN_W // 2, 518)))
         hint = self.font_hint.render(hint_text, True, C_GRAY_DARK)
         self.canvas.blit(hint, hint.get_rect(center=(SCREEN_W // 2, 682)))
         version = self.font_hint.render(f"v{VERSION}", True, C_GRAY_MID)
@@ -2572,9 +2584,11 @@ class Generala:
         self.online_button.draw(self.canvas, self.font_button, self.mouse_pos)
 
     def draw_online_setup(self):
-        logo = self.font_display.render("GENERALA PLUS ONLINE", True, C_WHITE_SOFT)
+        logo_text = "GENERALA PLUS ONLINE" if self.plus_mode else "GENERALA ONLINE"
+        logo = self.font_display.render(logo_text, True, C_WHITE_SOFT)
         self.canvas.blit(logo, logo.get_rect(center=(SCREEN_W // 2, 96)))
-        subtitle = self.font_mono.render("MESA PRIVADA PLUS POR IP", True, C_GOLD)
+        subtitle_text = "MESA PRIVADA PLUS POR IP" if self.plus_mode else "MESA CLASICA PRIVADA POR IP"
+        subtitle = self.font_mono.render(subtitle_text, True, C_GOLD if self.plus_mode else C_GRAY_LIGHT)
         self.canvas.blit(subtitle, subtitle.get_rect(center=(SCREEN_W // 2, 150)))
         panel = pygame.Rect(326, 215, 628, 440)
         premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_SUBTLE, radius=20, alpha=226, glow=False)
@@ -2582,20 +2596,26 @@ class Generala:
         self.online_ip_field.draw(self.canvas, self.font_label, self.font_body)
         self.online_host_button.draw(self.canvas, self.font_button, self.mouse_pos)
         self.online_join_button.draw(self.canvas, self.font_button, self.mouse_pos)
-        character = CHARACTER_BY_KEY[self.online_character_key]
         char_rect = self.online_char_button.rect
-        hovered = char_rect.collidepoint(self.mouse_pos)
-        pygame.draw.rect(self.canvas, C_BG_ELEVATED, char_rect, border_radius=16)
-        pygame.draw.rect(self.canvas, C_BORDER_ACTIVE if hovered else C_BORDER_SUBTLE, char_rect, width=1, border_radius=16)
-        icon_rect = pygame.Rect(char_rect.x + 18, char_rect.y + 12, 30, 30)
-        pygame.draw.circle(self.canvas, C_BG_DEEP, icon_rect.center, 16)
-        pygame.draw.circle(self.canvas, C_GOLD if hovered else C_BORDER_ACTIVE, icon_rect.center, 16, 1)
-        draw_geo_icon(self.canvas, icon_rect.inflate(-6, -6), character.key, C_WHITE_SOFT, 170, 2)
-        self.canvas.blit(self.font_label.render(character.name.upper(), True, C_WHITE_SOFT), (char_rect.x + 62, char_rect.y + 10))
-        desc = CHARACTER_SHORT_TEXT.get(character.key, character.text)
-        self.canvas.blit(self.font_hint.render(trim_text(desc, self.font_hint, char_rect.w - 84), True, C_GRAY_LIGHT), (char_rect.x + 62, char_rect.y + 32))
+        if self.plus_mode:
+            character = CHARACTER_BY_KEY[self.online_character_key]
+            hovered = char_rect.collidepoint(self.mouse_pos)
+            pygame.draw.rect(self.canvas, C_BG_ELEVATED, char_rect, border_radius=16)
+            pygame.draw.rect(self.canvas, C_BORDER_ACTIVE if hovered else C_BORDER_SUBTLE, char_rect, width=1, border_radius=16)
+            icon_rect = pygame.Rect(char_rect.x + 18, char_rect.y + 12, 30, 30)
+            pygame.draw.circle(self.canvas, C_BG_DEEP, icon_rect.center, 16)
+            pygame.draw.circle(self.canvas, C_GOLD if hovered else C_BORDER_ACTIVE, icon_rect.center, 16, 1)
+            draw_geo_icon(self.canvas, icon_rect.inflate(-6, -6), character.key, C_WHITE_SOFT, 170, 2)
+            self.canvas.blit(self.font_label.render(character.name.upper(), True, C_WHITE_SOFT), (char_rect.x + 62, char_rect.y + 10))
+            desc = CHARACTER_SHORT_TEXT.get(character.key, character.text)
+            self.canvas.blit(self.font_hint.render(trim_text(desc, self.font_hint, char_rect.w - 84), True, C_GRAY_LIGHT), (char_rect.x + 62, char_rect.y + 32))
+        else:
+            pygame.draw.rect(self.canvas, C_BG_ELEVATED, char_rect, border_radius=16)
+            pygame.draw.rect(self.canvas, C_BORDER_SUBTLE, char_rect, width=1, border_radius=16)
+            self.canvas.blit(self.font_label.render("MODO CLASICO ONLINE", True, C_WHITE_SOFT), (char_rect.x + 22, char_rect.y + 12))
+            self.canvas.blit(self.font_hint.render("Sin cartas ni personajes. Solo dados y planilla.", True, C_GRAY_LIGHT), (char_rect.x + 22, char_rect.y + 34))
         info = [
-            "HOSTEAR abre una mesa Plus y te conecta como jugador.",
+            "HOSTEAR abre la mesa con el modo elegido en el menu principal.",
             "Tu amigo se une con tu IP. Puerto 8765. Para internet usa VPN.",
         ]
         y = 548

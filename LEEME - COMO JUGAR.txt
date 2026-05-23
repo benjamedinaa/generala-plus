@@ -2,7 +2,7 @@ GENERALA PLUS
 ==============
 
 VERSION
-v0.5.0
+v0.6.0
 
 COMO ABRIR EL JUEGO
 1. Abrir "Jugar Generala Plus.bat".
@@ -17,21 +17,24 @@ MODO LOCAL
 
 MODO ONLINE
 El modo online usa la misma mesa visual que el modo local.
+Primero elegi Modo Clasico o Modo Plus en el menu principal.
+Cuando entres a ONLINE, el host abre la mesa con ese modo.
 
 SI VOS HOSTEAS
 1. Abrir "Jugar Generala Plus.bat".
-2. Entrar a ONLINE.
-3. Escribir tu nombre.
-4. Elegir personaje.
-5. Presionar HOSTEAR.
-6. Pasarle a tu amigo una de las IP que aparecen en pantalla.
+2. Elegir Modo Clasico o Modo Plus.
+3. Entrar a ONLINE.
+4. Escribir tu nombre.
+5. Si elegiste Plus, elegir personaje.
+6. Presionar HOSTEAR.
+7. Pasarle a tu amigo una de las IP que aparecen en pantalla.
 
 SI TU AMIGO SE UNE
 1. Abrir "Jugar Generala Plus.bat".
 2. Entrar a ONLINE.
 3. Escribir su nombre.
 4. Escribir tu IP en "IP del host".
-5. Elegir personaje.
+5. Si la mesa es Plus, elegir personaje.
 6. Presionar UNIRSE.
 
 IMPORTANTE PARA ONLINE
@@ -39,6 +42,7 @@ IMPORTANTE PARA ONLINE
 - Si no estan en la misma Wi-Fi, usen Radmin VPN, Hamachi o ZeroTier.
 - Puerto usado: 8765.
 - Si Windows Firewall pregunta, permitir Python en redes privadas.
+- Si aparece un error tipo WinError o no conecta, revisen que el host ya este en la pantalla "MESA ONLINE CREADA", que la IP sea correcta y que Firewall no haya bloqueado Python.
 
 CONTROLES
 - Click en dado: retener/liberar.

@@ -72,9 +72,10 @@ El juego ya incluye modo online dentro de la interfaz de Pygame. Funciona por TC
 Forma recomendada:
 
 1. Abrir `Jugar Generala Plus.bat`.
-2. En el menu principal, elegir `ONLINE`.
-3. El host presiona `HOSTEAR`.
-4. El amigo presiona `UNIRSE` y escribe la IP del host.
+2. En el menu principal, elegir `MODO CLASICO` o `MODO PLUS`.
+3. Elegir `JUGAR ONLINE`.
+4. El host presiona `HOSTEAR`.
+5. El amigo entra a `JUGAR ONLINE`, presiona `UNIRSE` y escribe la IP del host.
 
 Tambien quedan launchers tecnicos por separado:
 
@@ -84,7 +85,7 @@ Tambien quedan launchers tecnicos por separado:
 
 El host escucha en el puerto `8765`. Si juegan fuera de la misma red, el host tiene que abrir ese puerto o usar una VPN.
 
-La partida online usa la misma mesa visual que el modo local: mismos dados, planilla, paneles Plus, mercado, mano, monedas y flujo de compra. La diferencia es que las acciones viajan al servidor y el estado vuelve sincronizado para ambos jugadores. Reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
+La partida online usa la misma mesa visual que el modo local. El host decide desde el menu si la mesa sera Clasica o Plus: en Clasico se juega con dados y planilla pura; en Plus aparecen paneles, mercado, mano, monedas y flujo de compra. La diferencia tecnica es que las acciones viajan al servidor y el estado vuelve sincronizado para ambos jugadores. Reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
 
 Guia paso a paso para jugar con un amigo:
 

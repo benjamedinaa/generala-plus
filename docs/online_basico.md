@@ -17,8 +17,6 @@ El modo online ya esta integrado en la interfaz Pygame y reutiliza la misma mesa
 
 ## Que queda para una segunda etapa
 
-- Pantalla visual Host / Join dentro de Pygame.
-- Lobby con nombres, personajes y listo.
 - Reconectar si un jugador se cae.
 - Ataques, habilidades y cartas avanzadas dentro del motor online.
 - Eventos completos con UI online.
@@ -28,16 +26,21 @@ El modo online ya esta integrado en la interfaz Pygame y reutiliza la misma mesa
 ## Hostear una partida desde el juego
 
 1. Abrir `Jugar Generala Plus.bat`.
-2. Elegir `ONLINE`.
-3. Escribir nombre.
-4. Presionar `HOSTEAR`.
+2. Elegir `MODO CLASICO` o `MODO PLUS` en el menu principal.
+3. Elegir `JUGAR ONLINE`.
+4. Escribir nombre.
+5. Si la mesa es Plus, elegir personaje.
+6. Presionar `HOSTEAR`.
 
 ## Unirse desde el juego
 
 1. Abrir `Jugar Generala Plus.bat`.
-2. Elegir `ONLINE`.
+2. Elegir `JUGAR ONLINE`.
 3. Escribir nombre e IP del host.
-4. Presionar `UNIRSE`.
+4. Si la mesa es Plus, elegir personaje.
+5. Presionar `UNIRSE`.
+
+El modo de la partida lo define el host. Si el host eligio Clasico, la mesa online no usa cartas, monedas, mercado ni personajes. Si eligio Plus, la mesa abre con el sistema Plus visual.
 
 ## Launchers tecnicos
 
@@ -127,4 +130,4 @@ Para jugar con amigos fuera de la misma Wi-Fi, lo mas simple es usar una VPN de 
 
 ## Nota de diseno
 
-El servidor aplica acciones, no confia en que el cliente modifique el estado. Esto evita trampas accidentales, desincronizaciones y dados distintos entre jugadores.
+El servidor aplica acciones, no confia en que el cliente modifique el estado. Esto evita trampas accidentales, desincronizaciones y dados distintos entre jugadores. Si Windows muestra un error `WinError` al conectar, normalmente significa que la IP no responde, el host todavia no termino de abrir la mesa o Firewall bloqueo Python en el puerto `8765`.
