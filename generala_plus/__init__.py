@@ -1,4 +1,6 @@
-__all__ = ["Generala"]
+from .version import VERSION
+
+__all__ = ["Generala", "VERSION"]
 
 
 def __getattr__(name):

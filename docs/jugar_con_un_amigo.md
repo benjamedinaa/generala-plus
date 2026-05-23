@@ -1,22 +1,25 @@
 # Jugar online con un amigo
 
-El modo online actual funciona por consola y usa un servidor autoritativo. Es ideal para jugar con un amigo por la misma red Wi-Fi o por una VPN tipo Radmin VPN, Hamachi o ZeroTier.
+El modo online funciona dentro del juego y usa un servidor autoritativo. Es ideal para jugar con un amigo por la misma red Wi-Fi o por una VPN tipo Radmin VPN, Hamachi o ZeroTier.
 
 ## Opcion recomendada: misma Wi-Fi
 
 ### En tu PC
 
-1. Abri `Host y Jugar Online Generala Plus.bat`.
-2. El launcher muestra tus IPv4.
-3. Pasale a tu amigo la IPv4 que corresponda a tu red local. Normalmente se ve parecida a `192.168.0.15` o `192.168.1.20`.
-4. Tu ventana ya queda conectada como jugador local.
+1. Abri `Jugar Generala Plus.bat`.
+2. En el menu principal elegi `ONLINE`.
+3. Escribi tu nombre.
+4. Presiona `HOSTEAR`.
+5. Pasale a tu amigo tu IPv4 local. Normalmente se ve parecida a `192.168.0.15` o `192.168.1.20`.
 
 ### En la PC de tu amigo
 
-1. Tu amigo abre `Unirse Online Generala Plus.bat`.
-2. Cuando pida IP del host, escribe la IPv4 que le pasaste.
+1. Tu amigo abre `Jugar Generala Plus.bat`.
+2. Entra a `ONLINE`.
 3. Escribe su nombre.
-4. Cuando entren los dos jugadores, empieza la mesa.
+4. En `IP del host`, escribe la IPv4 que le pasaste.
+5. Presiona `UNIRSE`.
+6. Cuando entren los dos jugadores, empieza la mesa.
 
 Puerto usado: `8765`.
 
@@ -31,13 +34,26 @@ La forma mas simple es usar una VPN de LAN virtual:
 Pasos:
 
 1. Ambos entran a la misma red virtual.
-2. Vos abris `Host y Jugar Online Generala Plus.bat`.
+2. Vos abris el juego, entras a `ONLINE` y presionas `HOSTEAR`.
 3. Le pasas a tu amigo tu IP de la VPN.
-4. Tu amigo abre `Unirse Online Generala Plus.bat` y usa esa IP.
+4. Tu amigo abre el juego, entra a `ONLINE`, usa esa IP y presiona `UNIRSE`.
 
 Abrir puertos en el router tambien sirve, pero suele ser mas molesto y depende de cada proveedor de internet.
 
-## Comandos de partida
+## Controles de partida online visual
+
+- Click en `TIRAR DADOS`: tira los dados.
+- Click en un dado: retiene o libera ese dado.
+- Click derecho en cualquier dado: libera todos.
+- Click en una fila de planilla: anota esa categoria.
+- En fase compra, click en una carta del mercado: compra esa carta.
+- Click en `PASAR`: termina la compra sin comprar.
+- Click en una carta de tu mano: prepara o usa esa carta.
+- Si Dado Maestro pide valor, presiona `1-6`.
+
+## Comandos tecnicos de consola
+
+Los launchers de consola siguen existiendo para pruebas o partidas simples:
 
 ```text
 tirar                  tira los dados

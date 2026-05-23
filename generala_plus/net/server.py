@@ -51,16 +51,24 @@ class OnlineServer:
         self.engine = None
         self.lock = threading.RLock()
         self.running = True
+        self.server_socket = None
 
     def serve_forever(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            self.server_socket = server
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             server.bind((self.host, self.port))
             server.listen(2)
+            server.settimeout(0.5)
             print(f"Generala Plus Online escuchando en {self.host}:{self.port}")
             print("Esperando 2 jugadores...")
             while self.running and len(self.clients) < 2:
-                conn, address = server.accept()
+                try:
+                    conn, address = server.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
                 file = conn.makefile("rw", encoding="utf-8", newline="\n")
                 hello = read_message(file)
                 if not hello or hello.type != HELLO:
@@ -72,12 +80,33 @@ class OnlineServer:
                 send_message(file, Message(WELCOME, {"player_index": slot.index, "name": slot.name}))
                 self.broadcast(Message(INFO, {"text": f"{slot.name} se unio a la mesa."}))
                 print(f"{slot.name} conectado desde {address}")
+            if not self.running or len(self.clients) < 2:
+                self.close_clients()
+                return
             self.start_game()
             threads = [threading.Thread(target=self.client_loop, args=(client,), daemon=True) for client in self.clients]
             for thread in threads:
                 thread.start()
             for thread in threads:
                 thread.join()
+        self.server_socket = None
+
+    def stop(self):
+        self.running = False
+        try:
+            if self.server_socket:
+                self.server_socket.close()
+        except OSError:
+            pass
+        self.close_clients()
+
+    def close_clients(self):
+        for client in self.clients:
+            client.alive = False
+            try:
+                client.conn.close()
+            except OSError:
+                pass
 
     def start_game(self):
         names = [client.name for client in self.clients]

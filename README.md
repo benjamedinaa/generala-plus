@@ -65,31 +65,26 @@ El archivo queda en `release/Generala-Plus-windows.zip`.
 
 Por ahora el paquete usa Python instalado en la maquina de cada amigo. Si quieres compartirlo con gente que no tiene Python, el siguiente paso natural seria empaquetarlo como `.exe` con PyInstaller.
 
-## Online basico
+## Modo online
 
-El proyecto ya incluye una primera version online real, pensada como base estable para seguir creciendo. Funciona por TCP en LAN, Hamachi, Radmin VPN, ZeroTier o una red similar.
+El juego ya incluye modo online dentro de la interfaz de Pygame. Funciona por TCP en LAN, Hamachi, Radmin VPN, ZeroTier o una red similar.
 
-Para hostear:
+Forma recomendada:
 
-```powershell
-.\Host y Jugar Online Generala Plus.bat
-```
+1. Abrir `Jugar Generala Plus.bat`.
+2. En el menu principal, elegir `ONLINE`.
+3. El host presiona `HOSTEAR`.
+4. El amigo presiona `UNIRSE` y escribe la IP del host.
 
-Ese launcher abre el servidor y te conecta como jugador desde la misma PC. Si solo quieres abrir el servidor:
+Tambien quedan launchers tecnicos por separado:
 
-```powershell
-.\Host Online Generala Plus.bat
-```
-
-Para unirse:
-
-```powershell
-.\Unirse Online Generala Plus.bat
-```
+- `Host y Jugar Online Generala Plus.bat`
+- `Host Online Generala Plus.bat`
+- `Unirse Online Generala Plus.bat`
 
 El host escucha en el puerto `8765`. Si juegan fuera de la misma red, el host tiene que abrir ese puerto o usar una VPN.
 
-Esta primera version online corre por consola para ser estable y facil de compartir. Ya permite acciones principales: tirar dados, retener/liberar, usar varias cartas tacticas, anotar categorias, comprar cartas y pasar la compra. La UI Pygame online, lobby visual, reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
+Esta version online ya permite acciones principales desde la interfaz visual: tirar dados, retener/liberar, usar varias cartas tacticas, anotar categorias, comprar cartas y pasar la compra. Reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
 
 Guia paso a paso para jugar con un amigo:
 
@@ -97,7 +92,7 @@ Guia paso a paso para jugar con un amigo:
 docs/jugar_con_un_amigo.md
 ```
 
-Comandos del cliente online:
+La version tecnica por consola tambien acepta estos comandos:
 
 ```text
 tirar

@@ -1,15 +1,21 @@
 ﻿import math
 import os
 import random
+import socket
 import sys
+import threading
 from dataclasses import dataclass
 
 import pygame
 
 from .audio import SoundManager
+from .core.actions import BUY_MARKET_CARD, PASS_BUY, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_CARD, Action
 from .info_content import CHARACTER_SHORT_TEXT, INFO_TABS, card_detail, character_detail, event_detail, info_items
+from .net.pygame_client import PygameOnlineClient
+from .net.server import OnlineServer
 from .rules import *
 from .settings import *
+from .version import VERSION
 from .visual import (
     AnimationManager,
     CardView,
@@ -405,11 +411,17 @@ class Generala:
 
         self.field_1 = TextField((380, 286, 520, 48), "Jugador 1", "Jugador 1")
         self.field_2 = TextField((380, 358, 520, 48), "Jugador 2", "Jugador 2")
+        self.online_name_field = TextField((380, 286, 520, 48), "Tu nombre", "Jugador 1")
+        self.online_ip_field = TextField((380, 358, 520, 48), "IP del host", "127.0.0.1", max_len=24)
         self.fields = [self.field_1, self.field_2]
 
         self.roll_button = Button((500, 340, 280, 56), "TIRAR DADOS")
         self.release_button = Button((397, 412, 150, 42), "SOLTAR", "secondary")
-        self.start_button = Button((380, 570, 520, 58), "INICIAR PARTIDA")
+        self.start_button = Button((380, 570, 250, 58), "LOCAL")
+        self.online_button = Button((650, 570, 250, 58), "ONLINE", "secondary")
+        self.online_host_button = Button((380, 430, 250, 52), "HOSTEAR")
+        self.online_join_button = Button((650, 430, 250, 52), "UNIRSE", "secondary")
+        self.online_back_button = Button((380, 592, 520, 44), "VOLVER", "secondary")
         self.restart_button = Button((SCREEN_W // 2 - 130, 620, 260, BUTTON_H), "NUEVA PARTIDA")
         self.continue_button = Button((SCREEN_W // 2 - 120, 408, 240, 50), "CONTINUAR")
         self.pause_resume_button = Button((470, 272, 340, 48), "CONTINUAR")
@@ -439,6 +451,12 @@ class Generala:
         self.paused = False
         self.show_help = False
         self.show_sound_settings = False
+        self.online_client = None
+        self.online_server = None
+        self.online_server_thread = None
+        self.online_message = "Hostea una mesa o unite por IP."
+        self.online_pending_card = None
+        self.online_selected_die = None
         self.plus_mode = True
         self.selected_characters = ["matematico", "estratega"]
         self.players = []
@@ -623,10 +641,16 @@ class Generala:
             if self.state == "start":
                 pygame.quit()
                 sys.exit()
+            if self.state == "online_setup":
+                self.state = "start"
+                return
             if self.state == "game":
                 self.paused = not self.paused
                 self.show_sound_settings = False
                 self.sound.play("pause_open" if self.paused else "pause_close")
+            if self.state == "online_game":
+                self.state = "online_setup"
+                self.close_online()
             return
 
         if self.paused or self.show_help:
@@ -667,6 +691,24 @@ class Generala:
                 self.start_game()
             if self.start_button.handle_event(event, pos):
                 self.start_game()
+            if self.online_button.handle_event(event, pos):
+                self.state = "online_setup"
+                self.online_message = "Hostea una mesa o unite por IP."
+            return
+
+        if self.state == "online_setup":
+            self.online_name_field.handle_event(event, pos)
+            self.online_ip_field.handle_event(event, pos)
+            if self.online_host_button.handle_event(event, pos):
+                self.start_online_host_and_join()
+            if self.online_join_button.handle_event(event, pos):
+                self.start_online_join()
+            if self.online_back_button.handle_event(event, pos):
+                self.state = "start"
+            return
+
+        if self.state == "online_game":
+            self.handle_online_game_event(event, pos)
             return
 
         if self.state == "game":
@@ -795,6 +837,7 @@ class Generala:
         self.show_banner(title, detail, C_WHITE)
 
     def reset(self):
+        self.close_online()
         self.state = "start"
         self.paused = False
         self.show_help = False
@@ -818,6 +861,174 @@ class Generala:
         self.active_event = None
         self.active_event_round = 0
         self.round_scores = {}
+
+    def close_online(self):
+        if self.online_client:
+            self.online_client.close()
+        if self.online_server:
+            self.online_server.stop()
+        self.online_client = None
+        self.online_server = None
+        self.online_server_thread = None
+        self.online_pending_card = None
+        self.online_selected_die = None
+
+    def start_online_host_and_join(self):
+        self.close_online()
+        self.online_message = "Abriendo servidor local..."
+        self.online_server = OnlineServer("0.0.0.0", 8765)
+        self.online_server_thread = threading.Thread(target=self.online_server.serve_forever, daemon=True)
+        self.online_server_thread.start()
+        self.start_online_join(host_override="127.0.0.1")
+
+    def start_online_join(self, host_override=None):
+        host = host_override or self.online_ip_field.value("127.0.0.1")
+        name = self.online_name_field.value("Jugador")
+        self.online_client = PygameOnlineClient(host, 8765, name)
+        try:
+            self.online_client.connect()
+        except OSError as exc:
+            self.online_message = f"No pude conectar: {exc}"
+            self.online_client = None
+            return
+        self.online_message = "Conectando con la mesa..."
+        self.state = "online_game"
+
+    def online_snapshot(self):
+        if not self.online_client:
+            return {"state": None, "player_index": None, "info": self.online_message, "error": "", "connected": False}
+        return self.online_client.snapshot()
+
+    def send_online_action(self, kind, payload=None):
+        snap = self.online_snapshot()
+        player_index = snap.get("player_index")
+        if self.online_client and player_index is not None:
+            self.online_client.send_action(Action(kind, player_index, payload or {}))
+
+    def handle_online_game_event(self, event, pos):
+        snap = self.online_snapshot()
+        state = snap.get("state")
+        player_index = snap.get("player_index")
+        if not state or player_index is None:
+            return
+        my_turn = state["active_player_index"] == player_index
+        if event.type == pygame.KEYDOWN:
+            if self.online_pending_card and self.online_pending_card.get("type") == "value" and pygame.K_1 <= event.key <= pygame.K_6:
+                value = str(event.key - pygame.K_0)
+                args = [str(self.online_selected_die + 1), value]
+                self.send_online_action(USE_CARD, {"hand_index": self.online_pending_card["hand_index"], "args": args})
+                self.online_pending_card = None
+                self.online_selected_die = None
+                return
+            if my_turn and state["phase"] == "turn":
+                if event.key == pygame.K_SPACE:
+                    self.send_online_action(ROLL_DICE)
+                elif event.key == pygame.K_l:
+                    self.send_online_action(RELEASE_ALL)
+                elif state["rolls"] > 0 and pygame.K_1 <= event.key <= pygame.K_5:
+                    self.send_online_action(TOGGLE_HOLD, {"index": event.key - pygame.K_1})
+            return
+        if event.type != pygame.MOUSEBUTTONDOWN:
+            return
+        if self.online_pending_card and state["phase"] == "turn" and state["rolls"] > 0:
+            for index in range(DICE_COUNT):
+                if self.die_rect(index).inflate(16, 16).collidepoint(pos):
+                    self.finish_online_card_selection(index, event.button)
+                    return
+        if not my_turn:
+            return
+        if state["phase"] == "turn":
+            if self.roll_button.handle_event(event, pos):
+                self.send_online_action(ROLL_DICE)
+                return
+            if self.release_button.handle_event(event, pos):
+                self.send_online_action(RELEASE_ALL)
+                return
+            if state["rolls"] > 0:
+                for index in range(DICE_COUNT):
+                    if self.die_rect(index).inflate(16, 16).collidepoint(pos):
+                        if event.button == 3:
+                            self.send_online_action(RELEASE_ALL)
+                        elif event.button == 1:
+                            self.send_online_action(TOGGLE_HOLD, {"index": index})
+                        return
+                category = self.online_category_at(pos, state)
+                if category:
+                    self.send_online_action(SCORE_CATEGORY, {"category": category})
+                    return
+                for index, rect in self.online_hand_rects(state).items():
+                    if rect.collidepoint(pos):
+                        self.start_online_card_use(index, state["players"][player_index]["hand"][index])
+                        return
+        elif state["phase"] == "buy":
+            if self.pass_button.handle_event(event, pos):
+                self.send_online_action(PASS_BUY)
+                return
+            for index, rect in self.online_market_rects(state).items():
+                if rect.collidepoint(pos):
+                    self.send_online_action(BUY_MARKET_CARD, {"index": index})
+                    return
+
+    def start_online_card_use(self, hand_index, card_key):
+        no_arg = {"tirada_extra", "duplicador", "seguro", "escalera_rota", "generala_falsa", "milagro_controlado", "foco_numerico", "ancla", "apertura", "pulso_controlado", "ultima_oportunidad"}
+        one_die = {"reintento", "espejo", "comodin", "dado_dorado", "dado_duplicador"}
+        if card_key in no_arg:
+            self.send_online_action(USE_CARD, {"hand_index": hand_index, "args": []})
+            return
+        if card_key == "ajuste_fino":
+            self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "adjust"}
+            return
+        if card_key == "dado_maestro":
+            self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "master"}
+            return
+        if card_key == "copia":
+            self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "copy_source"}
+            return
+        if card_key in one_die:
+            self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "one_die"}
+            return
+        self.online_message = "Esa carta todavia no esta disponible en online visual."
+
+    def finish_online_card_selection(self, die_index, button):
+        pending = self.online_pending_card
+        if not pending:
+            return
+        if pending["type"] == "adjust":
+            direction = "-" if button == 3 else "+"
+            self.send_online_action(USE_CARD, {"hand_index": pending["hand_index"], "args": [str(die_index + 1), direction]})
+            self.online_pending_card = None
+        elif pending["type"] == "one_die":
+            self.send_online_action(USE_CARD, {"hand_index": pending["hand_index"], "args": [str(die_index + 1)]})
+            self.online_pending_card = None
+        elif pending["type"] == "master":
+            self.online_selected_die = die_index
+            pending["type"] = "value"
+        elif pending["type"] == "copy_source":
+            self.online_selected_die = die_index
+            pending["type"] = "copy_target"
+        elif pending["type"] == "copy_target":
+            self.send_online_action(USE_CARD, {"hand_index": pending["hand_index"], "args": [str(self.online_selected_die + 1), str(die_index + 1)]})
+            self.online_pending_card = None
+            self.online_selected_die = None
+
+    def online_hand_rects(self, state):
+        hand = state["players"][state.get("active_player_index", 0)]["hand"]
+        if not isinstance(hand, list):
+            return {}
+        return {index: pygame.Rect(56, 370 + index * 84, 196, 74) for index in range(min(4, len(hand)))}
+
+    def online_market_rects(self, state):
+        return {index: pygame.Rect(995, 326 + index * 106, MARKET_CARD_W, MARKET_CARD_H) for index, _ in enumerate(state.get("market", []))}
+
+    def online_category_rects(self, state):
+        panel = pygame.Rect(SCORE_SHEET_RECT)
+        return {key: pygame.Rect(panel.x + 18, panel.y + 34 + row * 13, panel.w - 36, 13) for row, (key, _) in enumerate(CATEGORIES)}
+
+    def online_category_at(self, pos, state):
+        for key, rect in self.online_category_rects(state).items():
+            if rect.collidepoint(pos):
+                return key
+        return None
 
     def prepare_turn(self, grant_start_coin=True):
         self.dice = [1, 2, 3, 4, 5]
@@ -2203,6 +2414,10 @@ class Generala:
         self.draw_background()
         if self.state == "start":
             self.draw_start()
+        elif self.state == "online_setup":
+            self.draw_online_setup()
+        elif self.state == "online_game":
+            self.draw_online_game()
         elif self.state == "game":
             self.draw_game()
         else:
@@ -2290,7 +2505,198 @@ class Generala:
             hint_text = "H ayuda   F11 pantalla   ESC salir"
         hint = self.font_hint.render(hint_text, True, C_GRAY_DARK)
         self.canvas.blit(hint, hint.get_rect(center=(SCREEN_W // 2, 682)))
+        version = self.font_hint.render(f"v{VERSION}", True, C_GRAY_MID)
+        self.canvas.blit(version, version.get_rect(bottomright=(SCREEN_W - 36, SCREEN_H - 28)))
         self.start_button.draw(self.canvas, self.font_button, self.mouse_pos)
+        self.online_button.draw(self.canvas, self.font_button, self.mouse_pos)
+
+    def draw_online_setup(self):
+        logo = self.font_display.render("GENERALA PLUS ONLINE", True, C_WHITE_SOFT)
+        self.canvas.blit(logo, logo.get_rect(center=(SCREEN_W // 2, 96)))
+        subtitle = self.font_mono.render("MESA PRIVADA PLUS POR IP", True, C_GOLD)
+        self.canvas.blit(subtitle, subtitle.get_rect(center=(SCREEN_W // 2, 150)))
+        panel = pygame.Rect(326, 215, 628, 440)
+        premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_SUBTLE, radius=20, alpha=226, glow=False)
+        self.online_name_field.draw(self.canvas, self.font_label, self.font_body)
+        self.online_ip_field.draw(self.canvas, self.font_label, self.font_body)
+        self.online_host_button.draw(self.canvas, self.font_button, self.mouse_pos)
+        self.online_join_button.draw(self.canvas, self.font_button, self.mouse_pos)
+        info = [
+            "HOSTEAR abre una mesa Plus y te conecta como jugador.",
+            "UNIRSE usa la IP del host. Puerto fijo: 8765.",
+            "Para internet: misma Wi-Fi, Radmin VPN, Hamachi o ZeroTier.",
+        ]
+        y = 502
+        for line in info:
+            text = self.font_hint.render(line, True, C_GRAY_LIGHT)
+            self.canvas.blit(text, text.get_rect(center=(SCREEN_W // 2, y)))
+            y += 22
+        if self.online_message:
+            msg = self.font_hint_bold.render(trim_text(self.online_message, self.font_hint_bold, 540), True, C_GOLD)
+            self.canvas.blit(msg, msg.get_rect(center=(SCREEN_W // 2, 558)))
+        ip_hint = self.font_hint.render(trim_text(f"Tus IP posibles: {self.local_ip_hint()}", self.font_hint, 540), True, C_GRAY_MID)
+        self.canvas.blit(ip_hint, ip_hint.get_rect(center=(SCREEN_W // 2, 578)))
+        self.online_back_button.draw(self.canvas, self.font_label, self.mouse_pos)
+
+    def local_ip_hint(self):
+        try:
+            host = socket.gethostname()
+            addresses = socket.gethostbyname_ex(host)[2]
+            ips = [ip for ip in addresses if not ip.startswith("127.")]
+            return ", ".join(ips[:3]) if ips else "127.0.0.1"
+        except OSError:
+            return "127.0.0.1"
+
+    def draw_online_game(self):
+        snap = self.online_snapshot()
+        state = snap.get("state")
+        player_index = snap.get("player_index")
+        if not state or player_index is None:
+            self.draw_online_waiting(snap)
+            return
+        my_turn = state["active_player_index"] == player_index
+        self.draw_online_header(state, player_index)
+        self.draw_online_status(state, snap, my_turn)
+        self.draw_online_dice(state)
+        self.draw_online_left_panel(state, player_index)
+        self.draw_online_right_panel(state, player_index)
+        self.draw_online_scorecard(state, player_index)
+
+        self.roll_button.enabled = my_turn and state["phase"] == "turn" and state["rolls"] < state["max_rolls"] and not all(state["held"])
+        self.release_button.enabled = my_turn and state["phase"] == "turn" and any(state["held"])
+        self.pass_button.enabled = my_turn and state["phase"] == "buy"
+        self.roll_button.text = "ULTIMO TIRO" if state["rolls"] == state["max_rolls"] - 1 else "TIRAR DADOS"
+        if state["phase"] == "turn":
+            self.roll_button.draw(self.canvas, self.font_button, self.mouse_pos, pulse=self.roll_button.text == "ULTIMO TIRO")
+            self.release_button.draw(self.canvas, self.font_label, self.mouse_pos)
+        elif state["phase"] == "buy":
+            self.pass_button.draw(self.canvas, self.font_button, self.mouse_pos)
+
+    def draw_online_waiting(self, snap):
+        self.draw_header_bar_title("GENERALA PLUS")
+        panel = pygame.Rect(340, 230, 600, 230)
+        premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_ACTIVE, radius=22, alpha=230, glow=True)
+        title = self.font_turn.render("ESPERANDO MESA", True, C_WHITE_SOFT)
+        self.canvas.blit(title, title.get_rect(center=(panel.centerx, panel.y + 72)))
+        msg = snap.get("error") or snap.get("info") or self.online_message
+        text = self.font_body.render(trim_text(msg, self.font_body, panel.w - 80), True, C_GRAY_LIGHT)
+        self.canvas.blit(text, text.get_rect(center=(panel.centerx, panel.y + 128)))
+        hint = self.font_hint.render("ESC vuelve al menu online", True, C_GRAY_MID)
+        self.canvas.blit(hint, hint.get_rect(center=(panel.centerx, panel.y + 176)))
+
+    def draw_header_bar_title(self, title_text):
+        header = pygame.Rect(HEADER_RECT)
+        pygame.draw.rect(self.canvas, C_BG_DEEP, header)
+        pygame.draw.line(self.canvas, C_BORDER_SUBTLE, (24, header.bottom), (SCREEN_W - 24, header.bottom), 1)
+        title = self.font_turn.render(title_text, True, C_WHITE_SOFT)
+        self.canvas.blit(title, (42, 20))
+
+    def draw_online_header(self, state, player_index):
+        self.draw_header_bar_title("GENERALA PLUS")
+        badge = pygame.Rect(292, 30, 74, 20)
+        pygame.draw.rect(self.canvas, C_BG_ELEVATED, badge, border_radius=10)
+        pygame.draw.rect(self.canvas, C_GOLD, badge, width=1, border_radius=10)
+        badge_text = self.font_hint_bold.render("ONLINE", True, C_GOLD)
+        self.canvas.blit(badge_text, badge_text.get_rect(center=badge.center))
+        active = state["players"][state["active_player_index"]]["name"].upper()
+        turn_label = self.font_label.render(f"TURNO DE {active}", True, C_WHITE_SOFT)
+        self.canvas.blit(turn_label, turn_label.get_rect(center=(SCREEN_W // 2, 28)))
+        round_label = self.font_hint.render(f"RONDA {state['round_number']:02d}   VOS: JUGADOR {player_index + 1}", True, C_GRAY_MID)
+        self.canvas.blit(round_label, round_label.get_rect(center=(SCREEN_W // 2, 52)))
+        rolls = self.font_label.render(f"TIRADAS {state['rolls']}/{state['max_rolls']}", True, C_WHITE_SOFT)
+        self.canvas.blit(rolls, rolls.get_rect(midright=(SCREEN_W - 190, 28)))
+        menu = self.font_hint.render("H AYUDA   ESC SALIR ONLINE", True, C_GRAY_MID)
+        self.canvas.blit(menu, menu.get_rect(midright=(SCREEN_W - 42, 53)))
+
+    def draw_online_status(self, state, snap, my_turn):
+        rect = pygame.Rect(STATUS_RECT)
+        pygame.draw.rect(self.canvas, C_BG_DEEP, rect, border_radius=18)
+        pygame.draw.rect(self.canvas, C_GOLD if my_turn else C_BORDER_SUBTLE, rect, width=1, border_radius=18)
+        msg = snap.get("error") or state.get("message") or snap.get("info") or ""
+        if self.online_pending_card:
+            if self.online_pending_card["type"] == "value":
+                msg = "Presiona 1-6 para fijar el valor del dado."
+            elif self.online_pending_card["type"] == "copy_target":
+                msg = "Elegi el dado destino para Copia."
+            else:
+                msg = "Elegi un dado. Click derecho baja Ajuste fino."
+        text = self.font_hint.render(trim_text(msg, self.font_hint, rect.w - 44), True, C_WHITE_SOFT)
+        self.canvas.blit(text, text.get_rect(center=rect.center))
+
+    def draw_online_dice(self, state):
+        for index, value in enumerate(state["dice"]):
+            rect = self.die_rect(index)
+            hover = rect.inflate(16, 16).collidepoint(self.mouse_pos)
+            selectable = bool(self.online_pending_card)
+            marks = []
+            if index in state.get("wildcard_indexes", []):
+                marks.append("W")
+            if index in state.get("golden_indexes", []):
+                marks.append("G")
+            if index in state.get("duplicator_indexes", []):
+                marks.append("x2")
+            DiceView.draw(self.canvas, rect, value, self.font_dice, selected=state["held"][index], hovered=hover, marks=marks, selectable=selectable)
+
+    def draw_online_left_panel(self, state, player_index):
+        left = pygame.Rect(LEFT_PANEL)
+        premium_panel(self.canvas, left, C_BG_PANEL, C_BORDER_SUBTLE, radius=22, alpha=226, glow=False)
+        me = state["players"][player_index]
+        self.canvas.blit(self.font_hint_bold.render("PLUS ONLINE / TU MESA", True, C_GRAY_MID), (left.x + 22, left.y + 18))
+        self.canvas.blit(self.font_body_bold.render(me["name"].upper(), True, C_WHITE_SOFT), (left.x + 22, left.y + 48))
+        coins = self.font_score.render(f"{me['coins']}/10", True, C_GOLD)
+        self.canvas.blit(coins, (left.right - 92, left.y + 92))
+        self.canvas.blit(self.font_hint.render("MONEDAS", True, C_GRAY_MID), (left.x + 22, left.y + 98))
+        hand = me["hand"] if isinstance(me["hand"], list) else []
+        self.canvas.blit(self.font_label.render(f"MANO {len(hand)}/3", True, C_WHITE_SOFT), (left.x + 22, 350))
+        rects = self.online_hand_rects(state)
+        for index in range(3):
+            rect = rects.get(index, pygame.Rect(56, 370 + index * 84, 196, 74))
+            if index < len(hand):
+                CardView.draw(self.canvas, rect, hand[index], self.card_fonts, compact=True, market=True, mouse_pos=self.mouse_pos, dimmed=state["phase"] != "turn")
+            else:
+                pygame.draw.rect(self.canvas, (5, 5, 6), rect, border_radius=16)
+                pygame.draw.rect(self.canvas, C_BORDER_SUBTLE, rect, width=1, border_radius=16)
+                empty = self.font_hint.render("VACIO", True, C_GRAY_DARK)
+                self.canvas.blit(empty, empty.get_rect(center=rect.center))
+
+    def draw_online_right_panel(self, state, player_index):
+        right = pygame.Rect(RIGHT_PANEL)
+        premium_panel(self.canvas, right, C_BG_PANEL, C_BORDER_SUBTLE, radius=22, alpha=226, glow=False)
+        self.canvas.blit(self.font_hint_bold.render("MERCADO ONLINE", True, C_GRAY_MID), (right.x + 22, right.y + 212))
+        for index, rect in self.online_market_rects(state).items():
+            card_key = state["market"][index]
+            CardView.draw(self.canvas, rect, card_key, self.card_fonts, compact=True, market=True, mouse_pos=self.mouse_pos, dimmed=state["phase"] != "buy")
+        footer = "Compra una carta o PASAR." if state["phase"] == "buy" else "Mercado disponible tras anotar."
+        text = self.font_hint.render(trim_text(footer, self.font_hint, right.w - 44), True, C_GRAY_MID)
+        self.canvas.blit(text, (right.x + 22, right.bottom - 58))
+
+    def draw_online_scorecard(self, state, player_index):
+        panel = pygame.Rect(SCORE_SHEET_RECT)
+        premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_SUBTLE, radius=18, alpha=205, glow=False)
+        self.canvas.blit(self.font_sheet_label_bold.render("CATEGORIA", True, C_GRAY_MID), (panel.x + 20, panel.y + 10))
+        for index, player in enumerate(state["players"]):
+            color = C_WHITE_SOFT if index == state["active_player_index"] else C_GRAY_MID
+            label = self.font_sheet_label_bold.render(trim_text(player["name"].upper(), self.font_sheet_label_bold, 108), True, color)
+            self.canvas.blit(label, label.get_rect(center=(panel.x + 265 + index * 150, panel.y + 16)))
+        for row, (key, label) in enumerate(CATEGORIES):
+            rect = self.online_category_rects(state)[key]
+            hovered = rect.collidepoint(self.mouse_pos)
+            if hovered:
+                pygame.draw.rect(self.canvas, (255, 255, 255, 14), rect, border_radius=4)
+            name = self.font_sheet_label.render(label.upper(), True, C_WHITE_SOFT if hovered else C_GRAY_MID)
+            self.canvas.blit(name, (rect.x + 4, rect.y + 2))
+            for index, player in enumerate(state["players"]):
+                value = player["sheet"].get(key)
+                color = C_GRAY_MID if value is None else (C_RED_ERROR if value == 0 else C_WHITE_SOFT)
+                text = self.font_sheet_score.render("-" if value is None else str(value), True, color)
+                self.canvas.blit(text, text.get_rect(center=(panel.x + 265 + index * 150, rect.centery)))
+        total_y = panel.bottom - 30
+        pygame.draw.line(self.canvas, C_BORDER_SUBTLE, (panel.x + 18, total_y - 8), (panel.right - 18, total_y - 8), 1)
+        self.canvas.blit(self.font_label.render("TOTAL", True, C_WHITE_SOFT), (panel.x + 20, total_y))
+        for index, player in enumerate(state["players"]):
+            color = C_GOLD if index == player_index else C_WHITE_SOFT
+            text = self.font_sheet_total.render(str(player["total"]), True, color)
+            self.canvas.blit(text, text.get_rect(center=(panel.x + 265 + index * 150, total_y + 8)))
 
     def draw_game(self):
         self.update_buttons()

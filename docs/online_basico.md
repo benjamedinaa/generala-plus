@@ -1,6 +1,6 @@
-# Online basico
+# Online
 
-Esta es la primera version jugable del modo online. No reemplaza todavia a la interfaz Pygame: funciona por terminal para dejar lista una base estable, testeable y autoritativa.
+El modo online ya esta integrado en la interfaz Pygame. La consola queda como herramienta tecnica secundaria, no como experiencia principal.
 
 ## Que permite hacer
 
@@ -25,7 +25,21 @@ Esta es la primera version jugable del modo online. No reemplaza todavia a la in
 - Chat o mensajes rapidos.
 - Codigos de sala o servidor central.
 
-## Hostear una partida
+## Hostear una partida desde el juego
+
+1. Abrir `Jugar Generala Plus.bat`.
+2. Elegir `ONLINE`.
+3. Escribir nombre.
+4. Presionar `HOSTEAR`.
+
+## Unirse desde el juego
+
+1. Abrir `Jugar Generala Plus.bat`.
+2. Elegir `ONLINE`.
+3. Escribir nombre e IP del host.
+4. Presionar `UNIRSE`.
+
+## Launchers tecnicos
 
 En la maquina que hace de host:
 
