@@ -728,8 +728,19 @@ class DiceView:
         if selected:
             inset = draw_rect.inflate(-8, -8)
             pygame.draw.rect(surface, (255, 255, 255, 72), inset, width=1, border_radius=RADIUS["dice"] - 4)
-            accent_bar = pygame.Rect(draw_rect.x + 18, draw_rect.bottom - 9, draw_rect.w - 36, 3)
-            pygame.draw.rect(surface, COLORS["platinum"], accent_bar, border_radius=2)
+            corner = 15
+            bracket_color = (*COLORS["platinum"], 150)
+            selected_layer = pygame.Surface(draw_rect.size, pygame.SRCALPHA)
+            points = [
+                ((10, 12), (10 + corner, 12)), ((10, 12), (10, 12 + corner)),
+                ((draw_rect.w - 10, 12), (draw_rect.w - 10 - corner, 12)), ((draw_rect.w - 10, 12), (draw_rect.w - 10, 12 + corner)),
+                ((10, draw_rect.h - 12), (10 + corner, draw_rect.h - 12)), ((10, draw_rect.h - 12), (10, draw_rect.h - 12 - corner)),
+                ((draw_rect.w - 10, draw_rect.h - 12), (draw_rect.w - 10 - corner, draw_rect.h - 12)), ((draw_rect.w - 10, draw_rect.h - 12), (draw_rect.w - 10, draw_rect.h - 12 - corner)),
+            ]
+            for start, end in points:
+                pygame.draw.line(selected_layer, bracket_color, start, end, 2)
+            pygame.draw.rect(selected_layer, (255, 255, 255, 18), selected_layer.get_rect().inflate(-18, -18), border_radius=RADIUS["dice"] - 8)
+            surface.blit(selected_layer, draw_rect.topleft)
         pip_radius = max(7, draw_rect.w // 12)
         pip_color = C_BG_DEEP
         for px, py in DiceView.PIPS.get(value, DiceView.PIPS[1]):
@@ -740,7 +751,8 @@ class DiceView:
             pygame.draw.circle(glow, (0, 0, 0, 54), (local[0] + 1, local[1] + 2), pip_radius + 1)
             surface.blit(glow, glow.get_rect(center=center))
             pygame.draw.circle(surface, pip_color, center, pip_radius)
-            pygame.draw.circle(surface, (48, 48, 48), center, pip_radius, 1)
+            pygame.draw.circle(surface, (20, 20, 20), center, pip_radius - 2)
+            pygame.draw.circle(surface, (78, 78, 76), (center[0] - 1, center[1] - 1), max(1, pip_radius - 4), 1)
         if marks:
             mark_font = pygame.font.SysFont("JetBrains Mono, Consolas, monospace", 12, bold=True)
             mark = mark_font.render("/".join(marks), True, C_GOLD)
@@ -935,10 +947,19 @@ class CardView:
         lift = -3 if hovered and active and compact else (-6 if hovered and active else 0)
         rect = rect.move(0, lift)
         if not card_key:
-            pygame.draw.rect(surface, (13, 13, 13), rect, border_radius=RADIUS["card"])
-            pygame.draw.rect(surface, (*C_BORDER_SUBTLE, 120), rect, width=1, border_radius=RADIUS["card"])
-            label = fonts["hint"].render("VACIO", True, C_GRAY_DARK)
-            surface.blit(label, label.get_rect(center=rect.center))
+            slot = pygame.Surface(rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(slot, (8, 8, 9, 120), slot.get_rect(), border_radius=RADIUS["card"])
+            pygame.draw.rect(slot, (*C_BORDER_SUBTLE, 92), slot.get_rect(), width=1, border_radius=RADIUS["card"])
+            pygame.draw.line(slot, (*C_BORDER_SUBTLE, 45), (16, rect.h - 13), (rect.w - 16, rect.h - 13), 1)
+            icon_rect = pygame.Rect(14, rect.h // 2 - 12, 24, 24)
+            pygame.draw.circle(slot, (5, 5, 6), icon_rect.center, 12)
+            pygame.draw.circle(slot, (*C_BORDER_SUBTLE, 100), icon_rect.center, 12, 1)
+            draw_geo_icon(slot, icon_rect.inflate(-6, -6), "coleccionista", C_GRAY_DARK, 120, 1)
+            label = fonts["hint_bold"].render("SLOT LIBRE", True, C_GRAY_DARK)
+            detail = fonts["hint"].render("Carta disponible", True, C_GRAY_DARK)
+            slot.blit(label, (48, rect.h // 2 - 14))
+            slot.blit(detail, (48, rect.h // 2 + 2))
+            surface.blit(slot, rect.topleft)
             return
         card = CARD_DEFS[card_key]
         accent = cls.accent(card_key)
