@@ -22,6 +22,7 @@ class ClientSlot:
         self.name = name
         self.character_key = character_key
         self.alive = True
+        self.connection_id = 0
 
 
 class OnlineServer:
@@ -31,6 +32,7 @@ class OnlineServer:
         self.seed = seed
         self.plus_mode = plus_mode
         self.clients = []
+        self.threads = []
         self.engine = None
         self.lock = threading.RLock()
         self.running = True
@@ -47,38 +49,79 @@ class OnlineServer:
             print(f"Generala Plus Online escuchando en {self.host}:{self.port}")
             print("Esperando 2 jugadores...")
             self.logger.info("Servidor escuchando en %s:%s modo=%s", self.host, self.port, "plus" if self.plus_mode else "clasico")
-            while self.running and len(self.clients) < 2:
+            while self.running:
                 try:
                     conn, address = server.accept()
                 except socket.timeout:
                     continue
                 except OSError:
                     break
-                file = conn.makefile("rw", encoding="utf-8", newline="\n")
-                hello = read_message(file)
-                if not hello or hello.type != HELLO:
+                self.accept_client(conn, address)
+        self.server_socket = None
+        self.logger.info("Servidor finalizado.")
+
+    def accept_client(self, conn, address):
+        try:
+            file = conn.makefile("rw", encoding="utf-8", newline="\n")
+            hello = read_message(file)
+            if not hello or hello.type != HELLO:
+                conn.close()
+                return
+            name = hello.payload.get("name") or f"Jugador {len(self.clients) + 1}"
+            character_key = hello.payload.get("character_key") or "matematico"
+            with self.lock:
+                slot = self.find_reconnect_slot(name)
+                if slot:
+                    try:
+                        if slot.conn:
+                            slot.conn.close()
+                    except OSError:
+                        pass
+                    slot.conn = conn
+                    slot.address = address
+                    slot.file = file
+                    slot.alive = True
+                    slot.connection_id += 1
+                    send_message(file, Message(WELCOME, {"player_index": slot.index, "name": slot.name, "reconnected": True}))
+                    self.logger.info("Cliente reconectado: %s desde %s", slot.name, address)
+                    if self.engine:
+                        self.engine.log_event(f"{slot.name} reconecto a la mesa.")
+                    self.broadcast(Message(INFO, {"text": f"{slot.name} volvio a la mesa."}))
+                    self.start_client_thread(slot)
+                    self.broadcast_state()
+                    return
+                if self.engine is not None or len(self.clients) >= 2:
+                    send_message(file, Message(ERROR, {"text": "Mesa llena o partida ya iniciada. Para reconectar usa el mismo nombre."}))
                     conn.close()
-                    continue
-                name = hello.payload.get("name") or f"Jugador {len(self.clients) + 1}"
-                character_key = hello.payload.get("character_key") or "matematico"
+                    return
                 slot = ClientSlot(conn, address, file, len(self.clients), name, character_key)
                 self.clients.append(slot)
                 send_message(file, Message(WELCOME, {"player_index": slot.index, "name": slot.name}))
                 self.broadcast(Message(INFO, {"text": f"{slot.name} se unio a la mesa."}))
                 print(f"{slot.name} conectado desde {address}")
                 self.logger.info("Cliente conectado: %s desde %s con personaje %s", slot.name, address, slot.character_key)
-            if not self.running or len(self.clients) < 2:
-                self.close_clients()
-                self.logger.info("Servidor cerrado antes de iniciar partida.")
-                return
-            self.start_game()
-            threads = [threading.Thread(target=self.client_loop, args=(client,), daemon=True) for client in self.clients]
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
-        self.server_socket = None
-        self.logger.info("Servidor finalizado.")
+                self.start_client_thread(slot)
+                if len(self.clients) == 2 and self.engine is None:
+                    self.start_game()
+        except Exception as exc:
+            self.logger.warning("No se pudo aceptar cliente %s: %s", address, exc)
+            try:
+                conn.close()
+            except OSError:
+                pass
+
+    def find_reconnect_slot(self, name):
+        normalized = str(name).strip().lower()
+        for client in self.clients:
+            if client.name.strip().lower() == normalized:
+                return client
+        return None
+
+    def start_client_thread(self, client):
+        connection_id = client.connection_id
+        thread = threading.Thread(target=self.client_loop, args=(client, connection_id), daemon=True)
+        self.threads.append(thread)
+        thread.start()
 
     def stop(self):
         self.running = False
@@ -112,9 +155,11 @@ class OnlineServer:
             self.engine.fill_market_for_active_player(record_offer=True)
         self.broadcast_state()
 
-    def client_loop(self, client):
+    def client_loop(self, client, connection_id):
         try:
             while self.running and client.alive:
+                if connection_id != client.connection_id:
+                    return
                 message = read_message(client.file)
                 if message is None:
                     break
@@ -123,8 +168,13 @@ class OnlineServer:
         except Exception as exc:
             self.send_error(client, f"Conexion cerrada: {exc}")
         finally:
+            if connection_id != client.connection_id:
+                return
             client.alive = False
-            self.broadcast(Message(INFO, {"text": f"{client.name} salio de la mesa."}))
+            self.broadcast(Message(INFO, {"text": f"{client.name} salio de la mesa. Esperando reconexion."}))
+            if self.engine:
+                self.engine.log_event(f"{client.name} se desconecto. Puede reconectar con el mismo nombre.")
+                self.broadcast_state()
 
     def handle_action(self, client, data):
         try:
@@ -140,10 +190,15 @@ class OnlineServer:
             self.send_error(client, str(exc))
 
     def broadcast_state(self):
+        if not self.engine:
+            return
         for client in self.clients:
             if client.alive:
-                payload = self.engine.state.to_dict(viewer_index=client.index)
-                send_message(client.file, Message(STATE, payload))
+                try:
+                    payload = self.engine.state.to_dict(viewer_index=client.index)
+                    send_message(client.file, Message(STATE, payload))
+                except OSError:
+                    client.alive = False
 
     def broadcast(self, message):
         for client in self.clients:

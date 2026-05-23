@@ -128,6 +128,7 @@ class GameState:
     score_multiplier: bool = False
     force_natural_score: bool = False
     score_overrides: dict = field(default_factory=dict)
+    history: list = field(default_factory=list)
     schema_version: int = 1
 
     @property
@@ -178,6 +179,7 @@ class GameState:
             "score_multiplier": self.score_multiplier,
             "force_natural_score": self.force_natural_score,
             "score_overrides": dict(self.score_overrides),
+            "history": list(self.history[-10:]),
             "round_number": self.round_number,
             "active_player_index": self.active_player_index,
             "players": [
@@ -219,5 +221,6 @@ class GameState:
             score_multiplier=bool(data.get("score_multiplier", False)),
             force_natural_score=bool(data.get("force_natural_score", False)),
             score_overrides=dict(data.get("score_overrides", {})),
+            history=list(data.get("history", [])),
             schema_version=int(data.get("schema_version", 1)),
         )

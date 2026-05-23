@@ -12,8 +12,8 @@ generala_plus/net/
   protocol.py  -> mensajes JSON para cliente/servidor
   wire.py      -> lectura/escritura JSON por linea
   commands.py  -> comandos de consola para el cliente online
-  server.py    -> servidor autoritativo TCP basico
-  client.py    -> cliente TCP basico por terminal
+  server.py    -> servidor autoritativo TCP con reconexion por nombre
+  client.py    -> cliente TCP por terminal para pruebas
 ```
 
 ## Principio principal
@@ -29,7 +29,7 @@ Esto evita tres problemas:
 ## Flujo online actual
 
 ```text
-Cliente terminal -> Action JSON -> Servidor autoritativo -> GameState publico -> Clientes
+Cliente Pygame/terminal -> Action JSON -> Servidor autoritativo -> GameState publico -> Clientes
 ```
 
 Ejemplos de acciones ya definidas:
@@ -42,6 +42,9 @@ Ejemplos de acciones ya definidas:
 - `pass_buy`
 - `use_card`
 - `use_ability`
+- `use_event`
+- `renew_market_card`
+- `discard_hand_card`
 
 ## Estado publico y estado privado
 
@@ -73,11 +76,11 @@ Tambien existen launchers:
 - `Host Online Generala Plus.bat`
 - `Unirse Online Generala Plus.bat`
 
-## Que falta para online completo con UI
+## Estado actual
 
-1. Completar en `GeneralaEngine` todas las cartas, habilidades, ataques y eventos del modo Plus.
-2. Conectar `pygame_app.py` a un cliente de red.
-3. Crear pantalla Host / Join dentro del juego.
+La UI online ya esta integrada en Pygame y usa la misma mesa visual que el modo local. El motor autoritativo cubre el flujo principal de Generala Clasica y Generala Plus: tiradas, planilla, mercado, cartas, habilidades, ataques suaves, eventos y reconexion simple si un jugador vuelve con el mismo nombre.
+
+Lo que queda como evolucion futura no afecta una partida privada normal: chat, codigos de sala, servidor central y reconexion mas sofisticada si cambia el nombre del jugador.
 4. Manejar lobby, listo, desconexion y reconexion.
 5. Agregar guardado/replay de partidas online.
 

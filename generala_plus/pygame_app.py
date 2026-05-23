@@ -472,6 +472,7 @@ class Generala:
         self.online_pending_card = None
         self.online_selected_die = None
         self.online_character_key = "matematico"
+        self.online_history = []
         self.plus_mode = True
         self.selected_characters = ["matematico", "estratega"]
         self.players = []
@@ -994,6 +995,7 @@ class Generala:
         self.score_multiplier = bool(state.get("score_multiplier", False))
         self.force_natural_score = bool(state.get("force_natural_score", False))
         self.score_overrides = dict(state.get("score_overrides", {}))
+        self.online_history = list(state.get("history", []))
         self.declarations = list(state.get("declarations", []))
         self.event_action_used = bool(state.get("event_action_used", False))
         self.no_coins_this_turn = bool(state.get("no_coins_this_turn", False))
@@ -2663,11 +2665,16 @@ class Generala:
         if logo_rect.y < 36:
             logo_rect.y = 36
         self.canvas.blit(logo, logo_rect)
+        brand_line = pygame.Rect(SCREEN_W // 2 - 176, 138, 352, 1)
+        pygame.draw.line(self.canvas, (*C_GOLD, 90), brand_line.midleft, brand_line.midright, 1)
         subtitle_text = "PLUS EDITION" if self.plus_mode else "CASINO TABLE MODE"
         subtitle = self.font_mono.render(subtitle_text, True, C_GOLD if self.plus_mode else C_GRAY_LIGHT)
         self.canvas.blit(subtitle, subtitle.get_rect(center=(SCREEN_W // 2, 150)))
+        edition = self.font_hint_bold.render("LOCAL  /  ONLINE  /  PRIVATE TABLE", True, C_GRAY_MID)
+        self.canvas.blit(edition, edition.get_rect(center=(SCREEN_W // 2, 176)))
         panel = pygame.Rect(326, 215, 628, 440)
         premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_SUBTLE, radius=20, alpha=226, glow=False)
+        pygame.draw.rect(self.canvas, (*C_GOLD, 38), panel.inflate(-18, -18), width=1, border_radius=18)
         selected_label = "MODO SELECCIONADO"
         self.canvas.blit(self.font_hint_bold.render(selected_label, True, C_GRAY_MID), (panel.x + 54, panel.y + 202))
         for field in self.fields:
@@ -2712,6 +2719,9 @@ class Generala:
             hint_text = "H ayuda   F11 pantalla   ESC salir"
             classic_note = self.font_hint.render("Generala clasica: dados, 3 tiradas y planilla pura.", True, C_GRAY_LIGHT)
             self.canvas.blit(classic_note, classic_note.get_rect(center=(SCREEN_W // 2, 518)))
+        mode_copy = "Dados + cartas + personajes" if self.plus_mode else "Solo dados, planilla y tension pura"
+        copy = self.font_hint.render(mode_copy, True, C_GRAY_MID)
+        self.canvas.blit(copy, copy.get_rect(center=(SCREEN_W // 2, 558)))
         hint = self.font_hint.render(hint_text, True, C_GRAY_DARK)
         self.canvas.blit(hint, hint.get_rect(center=(SCREEN_W // 2, 682)))
         version = self.font_hint.render(f"v{VERSION}", True, C_GRAY_MID)
@@ -2728,6 +2738,13 @@ class Generala:
         self.canvas.blit(subtitle, subtitle.get_rect(center=(SCREEN_W // 2, 150)))
         panel = pygame.Rect(326, 215, 628, 440)
         premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_SUBTLE, radius=20, alpha=226, glow=False)
+        mode_chip = pygame.Rect(panel.x + 54, panel.y + 14, 180, 24)
+        pygame.draw.rect(self.canvas, (7, 7, 8), mode_chip, border_radius=14)
+        pygame.draw.rect(self.canvas, C_GOLD if self.plus_mode else C_BORDER_ACTIVE, mode_chip, width=1, border_radius=14)
+        chip_label = "MESA PLUS" if self.plus_mode else "MESA CLASICA"
+        self.canvas.blit(self.font_hint_bold.render(chip_label, True, C_GOLD if self.plus_mode else C_GRAY_LIGHT), (mode_chip.x + 16, mode_chip.y + 6))
+        version = self.font_hint.render(f"v{VERSION}", True, C_GRAY_MID)
+        self.canvas.blit(version, version.get_rect(midright=(panel.right - 54, mode_chip.centery)))
         self.online_name_field.draw(self.canvas, self.font_label, self.font_body)
         self.online_ip_field.draw(self.canvas, self.font_label, self.font_body)
         self.online_host_button.draw(self.canvas, self.font_button, self.mouse_pos)
@@ -2750,20 +2767,19 @@ class Generala:
             pygame.draw.rect(self.canvas, C_BORDER_SUBTLE, char_rect, width=1, border_radius=16)
             self.canvas.blit(self.font_label.render("MODO CLASICO ONLINE", True, C_WHITE_SOFT), (char_rect.x + 22, char_rect.y + 12))
             self.canvas.blit(self.font_hint.render("Sin cartas ni personajes. Solo dados y planilla.", True, C_GRAY_LIGHT), (char_rect.x + 22, char_rect.y + 34))
-        info = [
-            "HOSTEAR abre la mesa con el modo elegido en el menu principal.",
-            "Tu amigo se une con tu IP. Puerto 8765. Para internet usa VPN.",
-        ]
-        y = 548
-        for line in info:
-            text = self.font_hint.render(line, True, C_GRAY_LIGHT)
-            self.canvas.blit(text, text.get_rect(center=(SCREEN_W // 2, y)))
-            y += 18
+        network_card = pygame.Rect(panel.x + 54, 546, panel.w - 108, 48)
+        pygame.draw.rect(self.canvas, (8, 8, 9), network_card, border_radius=14)
+        pygame.draw.rect(self.canvas, C_BORDER_SUBTLE, network_card, width=1, border_radius=14)
+        net_title = self.font_hint_bold.render("RED PRIVADA / RECONEXION", True, C_GRAY_LIGHT)
+        net_body = self.font_hint.render("Wi-Fi o VPN. Puerto 8765. Mismo nombre para volver si te caes.", True, C_GRAY_MID)
+        self.canvas.blit(net_title, (network_card.x + 18, network_card.y + 8))
+        self.canvas.blit(net_body, (network_card.x + 18, network_card.y + 25))
         if self.online_message and self.online_message != "Hostea una mesa o unite por IP.":
             msg = self.font_hint_bold.render(trim_text(self.online_message, self.font_hint_bold, 540), True, C_GOLD)
-            self.canvas.blit(msg, msg.get_rect(center=(SCREEN_W // 2, 604)))
-        ip_hint = self.font_hint.render(trim_text(f"Tus IP posibles: {self.local_ip_hint()}", self.font_hint, 540), True, C_GRAY_MID)
-        self.canvas.blit(ip_hint, ip_hint.get_rect(center=(SCREEN_W // 2, 586)))
+            self.canvas.blit(msg, msg.get_rect(center=(SCREEN_W // 2, 608)))
+        else:
+            ip_hint = self.font_hint.render(trim_text(f"Tus IP posibles: {self.local_ip_hint()}", self.font_hint, 540), True, C_GRAY_MID)
+            self.canvas.blit(ip_hint, ip_hint.get_rect(center=(SCREEN_W // 2, 604)))
         self.online_back_button.rect = pygame.Rect(380, 616, 520, 36)
         self.online_back_button.draw(self.canvas, self.font_label, self.mouse_pos)
 
@@ -2789,6 +2805,7 @@ class Generala:
             return
         self.draw_game()
         self.draw_online_badge(player_index, state)
+        self.draw_online_history()
 
     def draw_online_badge(self, player_index, state):
         badge = pygame.Rect(44, 52, 92, 20)
@@ -2801,28 +2818,63 @@ class Generala:
         status = self.font_hint_bold.render(label, True, C_GOLD if my_turn else C_GRAY_MID)
         self.canvas.blit(status, status.get_rect(midleft=(badge.right + 10, badge.centery)))
 
+    def draw_online_history(self):
+        if not self.online_history:
+            return
+        rect = pygame.Rect(44, 622, 212, 58)
+        surface = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(surface, (8, 8, 9, 184), surface.get_rect(), border_radius=14)
+        pygame.draw.rect(surface, (*C_BORDER_SUBTLE, 130), surface.get_rect(), width=1, border_radius=14)
+        surface.blit(self.font_hint_bold.render("HISTORIAL", True, C_GRAY_LIGHT), (14, 7))
+        y = 24
+        for line in self.online_history[-2:]:
+            text = self.font_hint.render(trim_text(line, self.font_hint, rect.w - 28), True, C_GRAY_MID)
+            surface.blit(text, (14, y))
+            y += 16
+        self.canvas.blit(surface, rect)
+
     def draw_online_waiting(self, snap):
         self.draw_header_bar_title("GENERALA PLUS")
-        panel = pygame.Rect(318, 200, 644, 330)
+        panel = pygame.Rect(286, 170, 708, 390)
         premium_panel(self.canvas, panel, C_BG_PANEL, C_BORDER_ACTIVE, radius=22, alpha=230, glow=True)
-        title = self.font_turn.render("MESA ONLINE CREADA", True, C_WHITE_SOFT)
-        self.canvas.blit(title, title.get_rect(center=(panel.centerx, panel.y + 62)))
+        title_text = "LOBBY ONLINE"
+        title = self.font_turn.render(title_text, True, C_WHITE_SOFT)
+        self.canvas.blit(title, title.get_rect(center=(panel.centerx, panel.y + 54)))
+        subtitle = self.font_hint_bold.render("MESA PRIVADA / DOS JUGADORES / SERVIDOR LOCAL", True, C_GOLD)
+        self.canvas.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.y + 88)))
         msg = snap.get("error") or snap.get("info") or self.online_message
         status_color = C_RED_ERROR if snap.get("error") else C_GOLD
         text = self.font_body.render(trim_text(msg, self.font_body, panel.w - 80), True, status_color)
-        self.canvas.blit(text, text.get_rect(center=(panel.centerx, panel.y + 118)))
-        lines = [
-            f"Tu nombre: {self.online_name_field.value('Jugador')}",
-            f"Personaje: {CHARACTER_BY_KEY[self.online_character_key].name}",
-            f"IP para tu amigo: {self.local_ip_hint()}",
+        self.canvas.blit(text, text.get_rect(center=(panel.centerx, panel.y + 124)))
+        mode_rect = pygame.Rect(panel.x + 54, panel.y + 158, 260, 132)
+        net_rect = pygame.Rect(panel.right - 314, panel.y + 158, 260, 132)
+        for rect, title_label in ((mode_rect, "MESA"), (net_rect, "CONEXION")):
+            pygame.draw.rect(self.canvas, (8, 8, 9), rect, border_radius=18)
+            pygame.draw.rect(self.canvas, C_BORDER_SUBTLE, rect, width=1, border_radius=18)
+            self.canvas.blit(self.font_hint_bold.render(title_label, True, C_GRAY_MID), (rect.x + 18, rect.y + 14))
+        mode_name = "GENERALA PLUS" if self.plus_mode else "GENERALA CLASICA"
+        self.canvas.blit(self.font_label.render(mode_name, True, C_WHITE_SOFT), (mode_rect.x + 18, mode_rect.y + 42))
+        if self.plus_mode:
+            char_name = CHARACTER_BY_KEY[self.online_character_key].name
+            mode_lines = [f"Jugador: {self.online_name_field.value('Jugador')}", f"Personaje: {char_name}", "Cartas, mercado y eventos activos."]
+        else:
+            mode_lines = [f"Jugador: {self.online_name_field.value('Jugador')}", "Sin cartas ni poderes.", "Dados y planilla pura."]
+        y = mode_rect.y + 68
+        for line in mode_lines:
+            self.canvas.blit(self.font_hint.render(trim_text(line, self.font_hint, mode_rect.w - 36), True, C_GRAY_LIGHT), (mode_rect.x + 18, y))
+            y += 18
+        net_lines = [
+            f"IP: {self.local_ip_hint()}",
             "Puerto: 8765",
-            "Si no estan en la misma Wi-Fi, usen Radmin VPN, Hamachi o ZeroTier.",
+            "Reconecta con el mismo nombre.",
+            "VPN si no comparten Wi-Fi.",
         ]
-        y = panel.y + 158
-        for line in lines:
-            rendered = self.font_hint.render(trim_text(line, self.font_hint, panel.w - 90), True, C_GRAY_LIGHT)
-            self.canvas.blit(rendered, rendered.get_rect(center=(panel.centerx, y)))
-            y += 24
+        y = net_rect.y + 42
+        for line in net_lines:
+            self.canvas.blit(self.font_hint.render(trim_text(line, self.font_hint, net_rect.w - 36), True, C_GRAY_LIGHT), (net_rect.x + 18, y))
+            y += 20
+        waiting = self.font_body_bold.render("Esperando al segundo jugador...", True, C_WHITE_SOFT)
+        self.canvas.blit(waiting, waiting.get_rect(center=(panel.centerx, panel.y + 326)))
         hint = self.font_hint_bold.render("ESC cancela y vuelve al menu online", True, C_GRAY_MID)
         self.canvas.blit(hint, hint.get_rect(center=(panel.centerx, panel.bottom - 36)))
 

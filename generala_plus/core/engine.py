@@ -98,6 +98,10 @@ class GeneralaEngine:
         if player_index != self.state.active_player_index:
             raise InvalidAction("No es el turno de ese jugador.")
 
+    def log_event(self, text):
+        self.state.history.append(str(text))
+        self.state.history = self.state.history[-18:]
+
     def _draw_card(self, exclude=None):
         exclude = set(exclude or ())
         if not self.state.deck:
@@ -201,6 +205,7 @@ class GeneralaEngine:
             add_coins(player, 1)
         self.fill_market_for_active_player(record_offer=True)
         state.message = f"Turno de {player.name}."
+        self.log_event(state.message)
 
     def roll_dice(self):
         if self.state.phase != "turn":
@@ -221,6 +226,7 @@ class GeneralaEngine:
         self.state.rolls += 1
         self.apply_plus_after_roll()
         self.state.message = "Dados tirados."
+        self.log_event(f"{self.state.active_player.name} tiro dados ({self.state.rolls}/{self.state.max_rolls}).")
         return self.state
 
     def toggle_hold(self, index):
@@ -230,11 +236,13 @@ class GeneralaEngine:
             raise InvalidAction("Indice de dado invalido.")
         self.state.held[index] = not self.state.held[index]
         self.state.message = "Dado retenido." if self.state.held[index] else "Dado liberado."
+        self.log_event(f"{self.state.active_player.name}: dado {index + 1} {'retenido' if self.state.held[index] else 'liberado'}.")
         return self.state
 
     def release_all(self):
         self.state.held = [False] * DICE_COUNT
         self.state.message = "Todos los dados liberados."
+        self.log_event(f"{self.state.active_player.name} libero todos los dados.")
         return self.state
 
     def score_category(self, category):
@@ -285,6 +293,7 @@ class GeneralaEngine:
             points = classic_score_category(category, self.state.dice, self.state.rolls, player.sheet)
         player.sheet[category] = points
         self.state.message = f"{category}: {points} puntos."
+        self.log_event(f"{player.name} anoto {category_name(category)} por {points}.")
         if self.state.plus_mode:
             self.award_plus_rewards(player, category, result, extra_coins)
             self.state.round_scores.setdefault(self.state.round_number, {})[player.name] = points
@@ -329,6 +338,7 @@ class GeneralaEngine:
             state.used_card_this_turn = True
             state.assisted_turn = True
             state.message = "Reciclaje cambio una carta por el mercado."
+            self.log_event(f"{player.name} uso Reciclaje.")
             return state
         self._apply_card_effect(card_key, args)
         player.hand.pop(hand_index)
@@ -336,6 +346,7 @@ class GeneralaEngine:
         state.used_card_this_turn = True
         state.assisted_turn = True
         state.message = f"{CARD_DEFS[card_key].name} usada."
+        self.log_event(f"{player.name} uso {CARD_DEFS[card_key].name}.")
         return state
 
     def _die_arg(self, args, position=0):
@@ -470,6 +481,7 @@ class GeneralaEngine:
             state.discard.append(consumed)
             state.used_card_this_turn = True
             state.message = f"{target.name} bloqueo el ataque."
+            self.log_event(state.message)
             return
         if card_key == "candado":
             category = str(args[0]) if args else ""
@@ -497,6 +509,7 @@ class GeneralaEngine:
         state.used_card_this_turn = True
         state.assisted_turn = True
         state.message = f"{CARD_DEFS[card_key].name} preparado contra {target.name}."
+        self.log_event(state.message)
 
     def target_blocks_attack(self, target):
         if target.temp_shield:
@@ -674,6 +687,7 @@ class GeneralaEngine:
         self.state.event_action_used = True
         self.state.assisted_turn = True
         self.state.message = "Ronda espejo: dado invertido."
+        self.log_event(f"{self.state.active_player.name} uso Ronda espejo.")
         return self.state
 
     def buy_market_card(self, index):
@@ -704,6 +718,7 @@ class GeneralaEngine:
         state.market.pop(index)
         self.fill_market_for_active_player(record_offer=True)
         state.message = f"{CARD_DEFS[card_key].name} comprada."
+        self.log_event(f"{player.name} compro {CARD_DEFS[card_key].name}.")
         return self.end_buy_phase()
 
     def renew_market_card(self, index):
@@ -721,6 +736,7 @@ class GeneralaEngine:
         state.discard.append(state.market.pop(index))
         self.fill_market_for_active_player(record_offer=True)
         state.message = "Mercado renovado."
+        self.log_event(f"{player.name} renovo una carta del mercado.")
         return state
 
     def discard_hand_card(self, index):
@@ -732,6 +748,7 @@ class GeneralaEngine:
             raise InvalidAction("Carta de mano invalida.")
         state.discard.append(player.hand.pop(index))
         state.message = "Carta descartada."
+        self.log_event(f"{player.name} descarto una carta.")
         return state
 
     def end_buy_phase(self):
@@ -757,8 +774,10 @@ class GeneralaEngine:
         if self.state.complete:
             self.state.phase = "end"
             self.state.message = "Partida finalizada."
+            self.log_event("Partida finalizada.")
             return self.state
         if self.state.plus_mode:
             self.begin_turn(grant_start_coin=True)
         self.state.message = f"Turno de {self.state.active_player.name}."
+        self.log_event(self.state.message)
         return self.state

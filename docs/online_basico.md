@@ -17,10 +17,10 @@ El modo online ya esta integrado en la interfaz Pygame y reutiliza la misma mesa
 - Usar acciones manuales de evento cuando corresponda.
 - Pasar la fase de compra.
 - Ocultar la mano del rival en el estado publico.
+- Reconectar a un jugador caido usando el mismo nombre.
 
 ## Que queda para una segunda etapa
 
-- Reconectar si un jugador se cae.
 - Chat o mensajes rapidos.
 - Codigos de sala o servidor central.
 

@@ -63,7 +63,11 @@ Tambien puedes generar un ZIP listo para mandar:
 
 El archivo queda en `release/Generala-Plus-vX.Y.Z-windows.zip`.
 
-Por ahora el paquete usa Python instalado en la maquina de cada amigo. Si quieres compartirlo con gente que no tiene Python, el siguiente paso natural seria empaquetarlo como `.exe` con PyInstaller.
+El paquete principal usa Python instalado en la maquina de cada amigo. Tambien podes generar un ejecutable `.exe` con:
+
+```powershell
+.\scripts\build_exe.ps1
+```
 
 ## Modo online
 
@@ -85,7 +89,7 @@ Tambien quedan launchers tecnicos por separado:
 
 El host escucha en el puerto `8765`. Si juegan fuera de la misma red, el host tiene que abrir ese puerto o usar una VPN.
 
-La partida online usa la misma mesa visual que el modo local. El host decide desde el menu si la mesa sera Clasica o Plus: en Clasico se juega con dados y planilla pura; en Plus aparecen paneles, mercado, mano, monedas, habilidades, ataques suaves, eventos de ronda y flujo de compra. La diferencia tecnica es que las acciones viajan al servidor y el estado vuelve sincronizado para ambos jugadores. La base jugable local/online ya comparte el mismo motor autoritativo; reconexion y servidor central quedan como mejoras futuras.
+La partida online usa la misma mesa visual que el modo local. El host decide desde el menu si la mesa sera Clasica o Plus: en Clasico se juega con dados y planilla pura; en Plus aparecen paneles, mercado, mano, monedas, habilidades, ataques suaves, eventos de ronda y flujo de compra. La diferencia tecnica es que las acciones viajan al servidor y el estado vuelve sincronizado para ambos jugadores. La base jugable local/online ya comparte el mismo motor autoritativo. Si alguien se desconecta puede volver a entrar usando el mismo nombre; chat, codigos de sala y servidor central quedan como mejoras futuras.
 
 Guia paso a paso para jugar con un amigo:
 
