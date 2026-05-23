@@ -1,6 +1,6 @@
 # Online
 
-El modo online ya esta integrado en la interfaz Pygame. La consola queda como herramienta tecnica secundaria, no como experiencia principal.
+El modo online ya esta integrado en la interfaz Pygame y reutiliza la misma mesa visual del modo local. La consola queda como herramienta tecnica secundaria, no como experiencia principal.
 
 ## Que permite hacer
 

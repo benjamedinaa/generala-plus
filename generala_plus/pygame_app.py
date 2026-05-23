@@ -421,6 +421,7 @@ class Generala:
         self.online_button = Button((650, 570, 250, 58), "ONLINE", "secondary")
         self.online_host_button = Button((380, 430, 250, 52), "HOSTEAR")
         self.online_join_button = Button((650, 430, 250, 52), "UNIRSE", "secondary")
+        self.online_char_button = Button((380, 486, 520, 54), "PERSONAJE", "secondary")
         self.online_back_button = Button((380, 592, 520, 44), "VOLVER", "secondary")
         self.restart_button = Button((SCREEN_W // 2 - 130, 620, 260, BUTTON_H), "NUEVA PARTIDA")
         self.continue_button = Button((SCREEN_W // 2 - 120, 408, 240, 50), "CONTINUAR")
@@ -457,6 +458,7 @@ class Generala:
         self.online_message = "Hostea una mesa o unite por IP."
         self.online_pending_card = None
         self.online_selected_die = None
+        self.online_character_key = "matematico"
         self.plus_mode = True
         self.selected_characters = ["matematico", "estratega"]
         self.players = []
@@ -703,6 +705,8 @@ class Generala:
                 self.start_online_host_and_join()
             if self.online_join_button.handle_event(event, pos):
                 self.start_online_join()
+            if self.online_char_button.handle_event(event, pos):
+                self.cycle_online_character()
             if self.online_back_button.handle_event(event, pos):
                 self.state = "start"
             return
@@ -757,19 +761,27 @@ class Generala:
         return self.mouse_pos
 
     def update_buttons(self):
+        is_playing = self.state in ("game", "online_game")
+        online_turn = True
+        if self.state == "online_game":
+            snap = self.online_snapshot()
+            state = snap.get("state")
+            player_index = snap.get("player_index")
+            online_turn = bool(state and player_index is not None and state["active_player_index"] == player_index)
         self.roll_button.enabled = (
-            self.state == "game"
+            is_playing
+            and online_turn
             and not self.rolling
             and self.phase == "turn"
             and self.rolls < self.max_rolls_current
             and not all(self.held)
         )
-        self.release_button.enabled = self.state == "game" and self.phase == "turn" and any(self.held) and not self.rolling
+        self.release_button.enabled = is_playing and online_turn and self.phase == "turn" and any(self.held) and not self.rolling
         self.roll_button.text = "ULTIMO TIRO" if self.rolls == self.max_rolls_current - 1 else "TIRAR DADOS"
         if self.plus_mode:
-            self.ability_button.enabled = self.can_use_active_ability()
-            self.event_button.enabled = self.can_use_event_action()
-            self.pass_button.enabled = self.phase == "buy" and not self.buy_transition_pending
+            self.ability_button.enabled = self.state == "game" and self.can_use_active_ability()
+            self.event_button.enabled = self.state == "game" and self.can_use_event_action()
+            self.pass_button.enabled = is_playing and online_turn and self.phase == "buy" and not self.buy_transition_pending
 
     def handle_pause_event(self, event):
         pos = self.event_pos(event)
@@ -873,6 +885,10 @@ class Generala:
         self.online_pending_card = None
         self.online_selected_die = None
 
+    def cycle_online_character(self):
+        current_index = next(index for index, character in enumerate(CHARACTERS) if character.key == self.online_character_key)
+        self.online_character_key = CHARACTERS[(current_index + 1) % len(CHARACTERS)].key
+
     def start_online_host_and_join(self):
         self.close_online()
         self.online_message = "Abriendo servidor local..."
@@ -884,7 +900,7 @@ class Generala:
     def start_online_join(self, host_override=None):
         host = host_override or self.online_ip_field.value("127.0.0.1")
         name = self.online_name_field.value("Jugador")
-        self.online_client = PygameOnlineClient(host, 8765, name)
+        self.online_client = PygameOnlineClient(host, 8765, name, character_key=self.online_character_key)
         try:
             self.online_client.connect()
         except OSError as exc:
@@ -899,6 +915,49 @@ class Generala:
             return {"state": None, "player_index": None, "info": self.online_message, "error": "", "connected": False}
         return self.online_client.snapshot()
 
+    def sync_online_state_to_local_view(self, state):
+        self.plus_mode = True
+        self.players = []
+        for data in state["players"]:
+            player = Player(
+                data.get("name", "Jugador"),
+                character_key=data.get("character_key", "matematico"),
+            )
+            for key, _ in CATEGORIES:
+                player.sheet[key] = data.get("sheet", {}).get(key)
+            player.coins = int(data.get("coins", 0))
+            hand = data.get("hand", [])
+            player.hand = list(hand) if isinstance(hand, list) else []
+            player.bonus_total = int(data.get("bonus_total", 0))
+            player.generala_valid = bool(data.get("generala_valid", False))
+            self.players.append(player)
+        self.turn = int(state.get("turn", 0))
+        self.phase = state.get("phase", "turn")
+        self.dice = list(state.get("dice", [1, 2, 3, 4, 5]))
+        self.held = list(state.get("held", [False] * DICE_COUNT))
+        self.rolls = int(state.get("rolls", 0))
+        self.max_rolls_current = int(state.get("max_rolls", MAX_ROLLS))
+        self.market = list(state.get("market", []))
+        self.deck = [None] * int(state.get("deck_count", 0))
+        self.discard = [None] * int(state.get("discard_count", 0))
+        event_key = state.get("active_event_key")
+        if event_key == "clasica":
+            self.active_event = CLASSIC_EVENT
+        else:
+            self.active_event = EVENT_BY_KEY.get(event_key)
+        self.message = state.get("message", "Mesa online.")
+        self.turn_assisted = bool(state.get("assisted_turn", False))
+        self.card_used_this_turn = bool(state.get("used_card_this_turn", False))
+        self.ability_used_this_turn = False
+        self.wildcard_indexes = set(state.get("wildcard_indexes", []))
+        self.golden_indexes = set(state.get("golden_indexes", []))
+        self.duplicator_indexes = set(state.get("duplicator_indexes", []))
+        self.score_multiplier = bool(state.get("score_multiplier", False))
+        self.force_natural_score = bool(state.get("force_natural_score", False))
+        self.score_overrides = dict(state.get("score_overrides", {}))
+        self.pending_action = None
+        self.rolling = False
+
     def send_online_action(self, kind, payload=None):
         snap = self.online_snapshot()
         player_index = snap.get("player_index")
@@ -911,6 +970,7 @@ class Generala:
         player_index = snap.get("player_index")
         if not state or player_index is None:
             return
+        self.sync_online_state_to_local_view(state)
         my_turn = state["active_player_index"] == player_index
         if event.type == pygame.KEYDOWN:
             if self.online_pending_card and self.online_pending_card.get("type") == "value" and pygame.K_1 <= event.key <= pygame.K_6:
@@ -952,20 +1012,21 @@ class Generala:
                         elif event.button == 1:
                             self.send_online_action(TOGGLE_HOLD, {"index": index})
                         return
-                category = self.online_category_at(pos, state)
+                category = self.category_at(pos)
                 if category:
                     self.send_online_action(SCORE_CATEGORY, {"category": category})
                     return
-                for index, rect in self.online_hand_rects(state).items():
-                    if rect.collidepoint(pos):
-                        self.start_online_card_use(index, state["players"][player_index]["hand"][index])
+                active_hand = self.current_player().hand
+                for index, rect in enumerate(self.hand_card_rects()):
+                    if index < len(active_hand) and rect.collidepoint(pos):
+                        self.start_online_card_use(index, active_hand[index])
                         return
         elif state["phase"] == "buy":
             if self.pass_button.handle_event(event, pos):
                 self.send_online_action(PASS_BUY)
                 return
-            for index, rect in self.online_market_rects(state).items():
-                if rect.collidepoint(pos):
+            for index, rect in enumerate(self.market_card_rects()):
+                if index < len(self.market) and rect.collidepoint(pos):
                     self.send_online_action(BUY_MARKET_CARD, {"index": index})
                     return
 
@@ -2521,21 +2582,33 @@ class Generala:
         self.online_ip_field.draw(self.canvas, self.font_label, self.font_body)
         self.online_host_button.draw(self.canvas, self.font_button, self.mouse_pos)
         self.online_join_button.draw(self.canvas, self.font_button, self.mouse_pos)
+        character = CHARACTER_BY_KEY[self.online_character_key]
+        char_rect = self.online_char_button.rect
+        hovered = char_rect.collidepoint(self.mouse_pos)
+        pygame.draw.rect(self.canvas, C_BG_ELEVATED, char_rect, border_radius=16)
+        pygame.draw.rect(self.canvas, C_BORDER_ACTIVE if hovered else C_BORDER_SUBTLE, char_rect, width=1, border_radius=16)
+        icon_rect = pygame.Rect(char_rect.x + 18, char_rect.y + 12, 30, 30)
+        pygame.draw.circle(self.canvas, C_BG_DEEP, icon_rect.center, 16)
+        pygame.draw.circle(self.canvas, C_GOLD if hovered else C_BORDER_ACTIVE, icon_rect.center, 16, 1)
+        draw_geo_icon(self.canvas, icon_rect.inflate(-6, -6), character.key, C_WHITE_SOFT, 170, 2)
+        self.canvas.blit(self.font_label.render(character.name.upper(), True, C_WHITE_SOFT), (char_rect.x + 62, char_rect.y + 10))
+        desc = CHARACTER_SHORT_TEXT.get(character.key, character.text)
+        self.canvas.blit(self.font_hint.render(trim_text(desc, self.font_hint, char_rect.w - 84), True, C_GRAY_LIGHT), (char_rect.x + 62, char_rect.y + 32))
         info = [
             "HOSTEAR abre una mesa Plus y te conecta como jugador.",
-            "UNIRSE usa la IP del host. Puerto fijo: 8765.",
-            "Para internet: misma Wi-Fi, Radmin VPN, Hamachi o ZeroTier.",
+            "Tu amigo se une con tu IP. Puerto 8765. Para internet usa VPN.",
         ]
-        y = 502
+        y = 548
         for line in info:
             text = self.font_hint.render(line, True, C_GRAY_LIGHT)
             self.canvas.blit(text, text.get_rect(center=(SCREEN_W // 2, y)))
-            y += 22
-        if self.online_message:
+            y += 18
+        if self.online_message and self.online_message != "Hostea una mesa o unite por IP.":
             msg = self.font_hint_bold.render(trim_text(self.online_message, self.font_hint_bold, 540), True, C_GOLD)
-            self.canvas.blit(msg, msg.get_rect(center=(SCREEN_W // 2, 558)))
+            self.canvas.blit(msg, msg.get_rect(center=(SCREEN_W // 2, 604)))
         ip_hint = self.font_hint.render(trim_text(f"Tus IP posibles: {self.local_ip_hint()}", self.font_hint, 540), True, C_GRAY_MID)
-        self.canvas.blit(ip_hint, ip_hint.get_rect(center=(SCREEN_W // 2, 578)))
+        self.canvas.blit(ip_hint, ip_hint.get_rect(center=(SCREEN_W // 2, 586)))
+        self.online_back_button.rect = pygame.Rect(380, 616, 520, 36)
         self.online_back_button.draw(self.canvas, self.font_label, self.mouse_pos)
 
     def local_ip_hint(self):
@@ -2554,23 +2627,23 @@ class Generala:
         if not state or player_index is None:
             self.draw_online_waiting(snap)
             return
-        my_turn = state["active_player_index"] == player_index
-        self.draw_online_header(state, player_index)
-        self.draw_online_status(state, snap, my_turn)
-        self.draw_online_dice(state)
-        self.draw_online_left_panel(state, player_index)
-        self.draw_online_right_panel(state, player_index)
-        self.draw_online_scorecard(state, player_index)
+        self.sync_online_state_to_local_view(state)
+        if self.phase == "end":
+            self.draw_end()
+            return
+        self.draw_game()
+        self.draw_online_badge(player_index, state)
 
-        self.roll_button.enabled = my_turn and state["phase"] == "turn" and state["rolls"] < state["max_rolls"] and not all(state["held"])
-        self.release_button.enabled = my_turn and state["phase"] == "turn" and any(state["held"])
-        self.pass_button.enabled = my_turn and state["phase"] == "buy"
-        self.roll_button.text = "ULTIMO TIRO" if state["rolls"] == state["max_rolls"] - 1 else "TIRAR DADOS"
-        if state["phase"] == "turn":
-            self.roll_button.draw(self.canvas, self.font_button, self.mouse_pos, pulse=self.roll_button.text == "ULTIMO TIRO")
-            self.release_button.draw(self.canvas, self.font_label, self.mouse_pos)
-        elif state["phase"] == "buy":
-            self.pass_button.draw(self.canvas, self.font_button, self.mouse_pos)
+    def draw_online_badge(self, player_index, state):
+        badge = pygame.Rect(44, 52, 92, 20)
+        pygame.draw.rect(self.canvas, C_BG_ELEVATED, badge, border_radius=12)
+        pygame.draw.rect(self.canvas, C_GOLD, badge, width=1, border_radius=12)
+        text = self.font_hint_bold.render("ONLINE", True, C_GOLD)
+        self.canvas.blit(text, text.get_rect(center=badge.center))
+        my_turn = state["active_player_index"] == player_index
+        label = "TU TURNO" if my_turn else "ESPERANDO RIVAL"
+        status = self.font_hint_bold.render(label, True, C_GOLD if my_turn else C_GRAY_MID)
+        self.canvas.blit(status, status.get_rect(midleft=(badge.right + 10, badge.centery)))
 
     def draw_online_waiting(self, snap):
         self.draw_header_bar_title("GENERALA PLUS")

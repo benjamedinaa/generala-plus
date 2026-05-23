@@ -33,12 +33,13 @@ ONLINE_CARD_POOL = {
 
 
 class ClientSlot:
-    def __init__(self, conn, address, file, index, name):
+    def __init__(self, conn, address, file, index, name, character_key="matematico"):
         self.conn = conn
         self.address = address
         self.file = file
         self.index = index
         self.name = name
+        self.character_key = character_key
         self.alive = True
 
 
@@ -75,7 +76,8 @@ class OnlineServer:
                     conn.close()
                     continue
                 name = hello.payload.get("name") or f"Jugador {len(self.clients) + 1}"
-                slot = ClientSlot(conn, address, file, len(self.clients), name)
+                character_key = hello.payload.get("character_key") or "matematico"
+                slot = ClientSlot(conn, address, file, len(self.clients), name, character_key)
                 self.clients.append(slot)
                 send_message(file, Message(WELCOME, {"player_index": slot.index, "name": slot.name}))
                 self.broadcast(Message(INFO, {"text": f"{slot.name} se unio a la mesa."}))
@@ -110,7 +112,8 @@ class OnlineServer:
 
     def start_game(self):
         names = [client.name for client in self.clients]
-        self.engine = GeneralaEngine.new_game(names, seed=self.seed)
+        characters = [client.character_key for client in self.clients]
+        self.engine = GeneralaEngine.new_game(names, character_keys=characters, seed=self.seed)
         self.engine.state.deck = [card for card in build_deck() if card in ONLINE_CARD_POOL]
         self.engine.random.shuffle(self.engine.state.deck)
         self.engine.state.market = []

@@ -6,10 +6,11 @@ from .wire import read_message, send_message
 
 
 class PygameOnlineClient:
-    def __init__(self, host, port, name):
+    def __init__(self, host, port, name, character_key="matematico"):
         self.host = host
         self.port = port
         self.name = name
+        self.character_key = character_key
         self.player_index = None
         self.state = None
         self.info = ""
@@ -24,7 +25,7 @@ class PygameOnlineClient:
     def connect(self):
         self.sock = socket.create_connection((self.host, self.port), timeout=10)
         self.file = self.sock.makefile("rw", encoding="utf-8", newline="\n")
-        send_message(self.file, Message(HELLO, {"name": self.name}))
+        send_message(self.file, Message(HELLO, {"name": self.name, "character_key": self.character_key}))
         self.running = True
         self.connected = True
         self.thread = threading.Thread(target=self._listen, daemon=True)

@@ -12,6 +12,7 @@ class OnlineClient:
         self.host = host
         self.port = port
         self.name = name
+        self.character_key = "matematico"
         self.player_index = None
         self.file = None
         self.running = True
@@ -28,7 +29,7 @@ class OnlineClient:
 
         with sock:
             self.file = sock.makefile("rw", encoding="utf-8", newline="\n")
-            send_message(self.file, Message(HELLO, {"name": self.name}))
+            send_message(self.file, Message(HELLO, {"name": self.name, "character_key": self.character_key}))
             listener = threading.Thread(target=self.listen_loop, daemon=True)
             listener.start()
             print(HELP_TEXT)

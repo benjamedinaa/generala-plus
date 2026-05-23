@@ -84,7 +84,7 @@ Tambien quedan launchers tecnicos por separado:
 
 El host escucha en el puerto `8765`. Si juegan fuera de la misma red, el host tiene que abrir ese puerto o usar una VPN.
 
-Esta version online ya permite acciones principales desde la interfaz visual: tirar dados, retener/liberar, usar varias cartas tacticas, anotar categorias, comprar cartas y pasar la compra. Reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
+La partida online usa la misma mesa visual que el modo local: mismos dados, planilla, paneles Plus, mercado, mano, monedas y flujo de compra. La diferencia es que las acciones viajan al servidor y el estado vuelve sincronizado para ambos jugadores. Reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
 
 Guia paso a paso para jugar con un amigo:
 

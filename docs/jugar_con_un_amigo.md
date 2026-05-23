@@ -1,6 +1,6 @@
 # Jugar online con un amigo
 
-El modo online funciona dentro del juego y usa un servidor autoritativo. Es ideal para jugar con un amigo por la misma red Wi-Fi o por una VPN tipo Radmin VPN, Hamachi o ZeroTier.
+El modo online funciona dentro del juego, usa la misma mesa visual del modo local y sincroniza la partida con un servidor autoritativo. Es ideal para jugar con un amigo por la misma red Wi-Fi o por una VPN tipo Radmin VPN, Hamachi o ZeroTier.
 
 ## Opcion recomendada: misma Wi-Fi
 
