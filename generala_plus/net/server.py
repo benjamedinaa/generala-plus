@@ -5,8 +5,31 @@ import threading
 from ..core import GeneralaEngine
 from ..core.actions import Action
 from ..core.engine import InvalidAction
+from ..rules import build_deck
 from .protocol import ACTION, ERROR, HELLO, INFO, STATE, WELCOME, Message
 from .wire import read_message, send_message
+
+ONLINE_CARD_POOL = {
+    "ajuste_fino",
+    "reintento",
+    "espejo",
+    "seguro",
+    "tirada_extra",
+    "copia",
+    "comodin",
+    "escalera_rota",
+    "ultima_oportunidad",
+    "dado_dorado",
+    "dado_maestro",
+    "duplicador",
+    "generala_falsa",
+    "milagro_controlado",
+    "foco_numerico",
+    "ancla",
+    "apertura",
+    "pulso_controlado",
+    "dado_duplicador",
+}
 
 
 class ClientSlot:
@@ -59,6 +82,13 @@ class OnlineServer:
     def start_game(self):
         names = [client.name for client in self.clients]
         self.engine = GeneralaEngine.new_game(names, seed=self.seed)
+        self.engine.state.deck = [card for card in build_deck() if card in ONLINE_CARD_POOL]
+        self.engine.random.shuffle(self.engine.state.deck)
+        self.engine.state.market = []
+        self.engine.state.discard = []
+        for player in self.engine.state.players:
+            player.offered_market_cards.clear()
+        self.engine.fill_market_for_active_player(record_offer=True)
         self.broadcast_state()
 
     def client_loop(self, client):

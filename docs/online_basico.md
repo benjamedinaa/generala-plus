@@ -11,6 +11,7 @@ Esta es la primera version jugable del modo online. No reemplaza todavia a la in
 - Soltar todos los dados.
 - Anotar categorias.
 - Comprar una carta del mercado.
+- Usar cartas tacticas principales.
 - Pasar la fase de compra.
 - Ocultar la mano del rival en el estado publico.
 
@@ -19,7 +20,7 @@ Esta es la primera version jugable del modo online. No reemplaza todavia a la in
 - Pantalla visual Host / Join dentro de Pygame.
 - Lobby con nombres, personajes y listo.
 - Reconectar si un jugador se cae.
-- Todas las cartas avanzadas y habilidades dentro del motor online.
+- Ataques, habilidades y cartas avanzadas dentro del motor online.
 - Eventos completos con UI online.
 - Chat o mensajes rapidos.
 - Codigos de sala o servidor central.
@@ -27,6 +28,14 @@ Esta es la primera version jugable del modo online. No reemplaza todavia a la in
 ## Hostear una partida
 
 En la maquina que hace de host:
+
+```powershell
+.\Host y Jugar Online Generala Plus.bat
+```
+
+Ese archivo abre el servidor en otra ventana y te conecta como jugador usando `127.0.0.1`.
+
+Si queres abrir solo el servidor:
 
 ```powershell
 .\Host Online Generala Plus.bat
@@ -60,6 +69,10 @@ hold 1                 retiene o libera el dado 1
 soltar                 libera todos los dados
 anotar escalera        anota una categoria
 comprar 2              compra la segunda carta del mercado
+usar 1 3 +             usa la carta 1 de tu mano, dado 3, subir
+usar 1 3 -             usa la carta 1 de tu mano, dado 3, bajar
+usar 1 2 6             Dado maestro: dado 2 pasa a 6
+usar 2 1 4             Copia: copia dado 1 sobre dado 4
 pasar                  termina la fase de compra
 estado                 vuelve a imprimir el estado
 ayuda                  muestra comandos
@@ -67,6 +80,32 @@ salir                  cierra el cliente
 ```
 
 Categorias validas: `unos`, `doses`, `treses`, `cuatros`, `cincos`, `seises`, `escalera`, `full`, `poker`, `generala`, `doble`.
+
+## Cartas disponibles en online basico
+
+Ya funcionan estas cartas tacticas:
+
+- Ajuste fino
+- Reintento
+- Espejo
+- Tirada extra
+- Copia
+- Comodin
+- Dado maestro
+- Duplicador
+- Seguro
+- Escalera rota
+- Generala falsa
+- Milagro controlado
+- Dado dorado
+- Dado duplicador
+- Foco numerico
+- Ancla
+- Apertura
+- Pulso controlado
+- Ultima oportunidad
+
+El mercado online usa solo cartas compatibles con esta version. Las cartas de ataque y algunas interacciones especiales quedan para la version online visual, porque requieren seleccionar rival, bloquear categorias o resolver efectos entre turnos con mas UI.
 
 ## Redes recomendadas
 

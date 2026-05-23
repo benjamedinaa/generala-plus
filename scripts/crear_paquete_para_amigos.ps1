@@ -26,6 +26,7 @@ $items = @(
     "ejercicio-9.py",
     "Jugar Generala Plus.bat",
     "Host Online Generala Plus.bat",
+    "Host y Jugar Online Generala Plus.bat",
     "Unirse Online Generala Plus.bat"
 )
 

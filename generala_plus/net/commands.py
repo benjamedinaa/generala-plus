@@ -1,4 +1,5 @@
-from ..core.actions import BUY_MARKET_CARD, PASS_BUY, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, Action
+from ..core.actions import BUY_MARKET_CARD, PASS_BUY, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_CARD, Action
+from ..rules import CARD_DEFS, CATEGORIES, category_name
 
 
 CATEGORY_ALIASES = {
@@ -35,12 +36,21 @@ HELP_TEXT = """Comandos online basicos:
   soltar / release             soltar todos
   anotar <categoria>           anotar categoria
   comprar 1..3                 comprar carta del mercado
+  usar <carta> [args]           usar carta de tu mano
   pasar                        pasar fase de compra
   estado                       volver a mostrar estado
   ayuda                        mostrar ayuda
   salir                        cerrar cliente
 
 Categorias: unos, doses, treses, cuatros, cincos, seises, escalera, full, poker, generala, doble.
+
+Cartas online principales:
+  usar 1 3 +                   Ajuste fino: carta 1, dado 3, subir
+  usar 1 3 -                   Ajuste fino: carta 1, dado 3, bajar
+  usar 2 5                     Reintento/Espejo/Comodin/Dado dorado: dado 5
+  usar 1 2 6                   Dado maestro: dado 2 pasa a 6
+  usar 2 1 4                   Copia: copia dado 1 sobre dado 4
+  usar 3                       Tirada extra, Duplicador, Seguro, Ancla, Apertura
 """
 
 
@@ -71,6 +81,11 @@ def parse_command(text, player_index):
             raise ValueError("Indica una carta del mercado: 1, 2 o 3.")
         index = int(parts[1]) - 1
         return Action(BUY_MARKET_CARD, player_index, {"index": index})
+    if verb in {"usar", "use", "carta"}:
+        if len(parts) < 2:
+            raise ValueError("Indica una carta de tu mano: 1, 2 o 3.")
+        index = int(parts[1]) - 1
+        return Action(USE_CARD, player_index, {"hand_index": index, "args": parts[2:]})
     if verb in {"pasar", "pass"}:
         return Action(PASS_BUY, player_index)
     return None
@@ -86,17 +101,46 @@ def format_state(state, viewer_index):
         f"Mensaje: {state['message']}",
         f"Dados: {' '.join(str(v) for v in state['dice'])}   Retenidos: {' '.join('X' if h else '-' for h in state['held'])}   Tiradas: {state['rolls']}/{state['max_rolls']}",
         "",
-        "Jugadores:",
     ]
+    if state["phase"] == "end":
+        winner = max(state["players"], key=lambda player: player["total"])
+        lines.append(f"GANADOR: {winner['name']} con {winner['total']} puntos")
+        lines.append("")
+    lines.append("Jugadores:")
     for index, player in enumerate(state["players"]):
         marker = " <- vos" if index == viewer_index else ""
-        hand = player["hand"] if isinstance(player["hand"], list) else f"{player['hand']['count']} carta(s)"
+        hand = format_cards(player["hand"]) if isinstance(player["hand"], list) else f"{player['hand']['count']} carta(s)"
         lines.append(f"  {index + 1}. {player['name']}: {player['total']} pts, {player['coins']} monedas, mano: {hand}{marker}")
     lines.append("")
     lines.append("Mercado:")
     for index, card_key in enumerate(state.get("market", []), start=1):
-        lines.append(f"  {index}. {card_key}")
+        lines.append(f"  {index}. {format_card(card_key)}")
     lines.append("")
-    lines.append(f"Tu mano: {you['hand']}")
+    lines.append(f"Tu mano: {format_cards(you['hand'])}")
+    lines.append("")
+    lines.append("Planilla:")
+    for key, _ in CATEGORIES:
+        cells = []
+        for player in state["players"]:
+            value = player["sheet"].get(key)
+            cells.append("-" if value is None else str(value))
+        lines.append(f"  {category_name(key):15} {cells[0]:>4} | {cells[1]:>4}")
     lines.append("=" * 64)
     return "\n".join(lines)
+
+
+def format_card(card_key):
+    card = CARD_DEFS.get(card_key)
+    if not card:
+        return str(card_key)
+    return f"{card.name} [{card.tier}, {card.cost} monedas] - {card.text}"
+
+
+def format_cards(cards):
+    if not cards:
+        return "(sin cartas)"
+    names = []
+    for index, card_key in enumerate(cards, start=1):
+        card = CARD_DEFS.get(card_key)
+        names.append(f"{index}. {card.name if card else card_key}")
+    return ", ".join(names)

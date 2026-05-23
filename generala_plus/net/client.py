@@ -18,7 +18,15 @@ class OnlineClient:
         self.last_state = None
 
     def run(self):
-        with socket.create_connection((self.host, self.port), timeout=20) as sock:
+        try:
+            sock = socket.create_connection((self.host, self.port), timeout=20)
+        except OSError as exc:
+            print(f"No pude conectar con {self.host}:{self.port}.")
+            print(f"Detalle: {exc}")
+            print("Revisa IP, VPN/LAN, firewall y que el host tenga abierto el servidor.")
+            return
+
+        with sock:
             self.file = sock.makefile("rw", encoding="utf-8", newline="\n")
             send_message(self.file, Message(HELLO, {"name": self.name}))
             listener = threading.Thread(target=self.listen_loop, daemon=True)

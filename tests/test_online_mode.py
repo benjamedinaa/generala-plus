@@ -1,7 +1,7 @@
 import io
 import unittest
 
-from generala_plus.core.actions import BUY_MARKET_CARD, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD
+from generala_plus.core.actions import BUY_MARKET_CARD, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_CARD
 from generala_plus.core.engine import GeneralaEngine
 from generala_plus.net.commands import format_state, parse_command
 from generala_plus.net.protocol import ACTION, Message, action_from_message, action_message
@@ -29,6 +29,11 @@ class OnlineModeTests(unittest.TestCase):
         self.assertEqual(buy.kind, BUY_MARKET_CARD)
         self.assertEqual(buy.payload["index"], 1)
 
+        use = parse_command("usar 1 3 +", 0)
+        self.assertEqual(use.kind, USE_CARD)
+        self.assertEqual(use.payload["hand_index"], 0)
+        self.assertEqual(use.payload["args"], ["3", "+"])
+
     def test_protocol_action_round_trip(self):
         action = parse_command("anotar full", 0)
         message = action_message(action)
@@ -55,7 +60,7 @@ class OnlineModeTests(unittest.TestCase):
 
         self.assertIn("Ana", rendered)
         self.assertIn("Bruno", rendered)
-        self.assertIn("ajuste_fino", rendered)
+        self.assertIn("Ajuste fino", rendered)
         self.assertNotIn("dado_maestro", rendered)
         self.assertIn("1 carta(s)", rendered)
 

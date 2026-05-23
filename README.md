@@ -72,6 +72,12 @@ El proyecto ya incluye una primera version online real, pensada como base establ
 Para hostear:
 
 ```powershell
+.\Host y Jugar Online Generala Plus.bat
+```
+
+Ese launcher abre el servidor y te conecta como jugador desde la misma PC. Si solo quieres abrir el servidor:
+
+```powershell
 .\Host Online Generala Plus.bat
 ```
 
@@ -83,7 +89,13 @@ Para unirse:
 
 El host escucha en el puerto `8765`. Si juegan fuera de la misma red, el host tiene que abrir ese puerto o usar una VPN.
 
-Esta primera version online es intencionalmente basica y corre por consola. Ya permite acciones principales: tirar dados, retener/liberar, anotar categorias, comprar cartas y pasar la compra. La UI Pygame online, lobby visual, reconexion, cartas avanzadas, habilidades y eventos completos quedan preparados como siguiente etapa.
+Esta primera version online corre por consola para ser estable y facil de compartir. Ya permite acciones principales: tirar dados, retener/liberar, usar varias cartas tacticas, anotar categorias, comprar cartas y pasar la compra. La UI Pygame online, lobby visual, reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
+
+Guia paso a paso para jugar con un amigo:
+
+```text
+docs/jugar_con_un_amigo.md
+```
 
 Comandos del cliente online:
 
@@ -91,6 +103,8 @@ Comandos del cliente online:
 tirar
 hold 1
 soltar
+usar 1 3 +
+usar 1 2 6
 anotar full
 comprar 2
 pasar

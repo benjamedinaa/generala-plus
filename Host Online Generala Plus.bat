@@ -9,8 +9,15 @@ echo ============================================================
 echo   GENERALA PLUS - HOST ONLINE
 echo ============================================================
 echo.
-echo Este modo online es basico y funciona por LAN o VPN.
-echo Compartí tu IP y el puerto 8765 con el otro jugador.
+echo Este archivo abre SOLO el servidor.
+echo Para jugar desde esta misma PC, abre tambien:
+echo   Unirse Online Generala Plus.bat
+echo y usa la IP 127.0.0.1.
+echo.
+echo IPs de esta PC para pasarle a tu amigo:
+ipconfig | findstr /R /C:"IPv4"
+echo.
+echo Puerto: 8765
 echo.
 
 where py >nul 2>nul

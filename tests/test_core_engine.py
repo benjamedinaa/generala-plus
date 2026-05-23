@@ -1,7 +1,7 @@
 import unittest
 
 from generala_plus.core import Action, GameState, GeneralaEngine
-from generala_plus.core.actions import BUY_MARKET_CARD, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD
+from generala_plus.core.actions import BUY_MARKET_CARD, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_CARD
 from generala_plus.net.protocol import Message, action_from_message, action_message
 
 
@@ -60,6 +60,24 @@ class CoreEngineTest(unittest.TestCase):
         self.assertIn(card, player.hand)
         self.assertEqual(engine.state.active_player_index, 1)
         self.assertEqual(engine.state.phase, "turn")
+
+    def test_online_card_use_changes_dice_and_marks_assisted(self):
+        engine = GeneralaEngine.new_game(["Ana", "Bruno"], seed=11)
+        player = engine.state.active_player
+        player.hand = ["dado_maestro"]
+        engine.state.dice = [1, 1, 1, 1, 2]
+        engine.state.rolls = 3
+
+        engine.apply(Action(USE_CARD, 0, {"hand_index": 0, "args": ["5", "1"]}))
+
+        self.assertEqual(engine.state.dice, [1, 1, 1, 1, 1])
+        self.assertTrue(engine.state.assisted_turn)
+        self.assertTrue(engine.state.used_card_this_turn)
+        self.assertEqual(player.hand, [])
+        self.assertIn("dado_maestro", engine.state.discard)
+
+        engine.apply(Action(SCORE_CATEGORY, 0, {"category": "generala"}))
+        self.assertEqual(player.sheet["generala"], 45)
 
     def test_protocol_roundtrip(self):
         original = Action(ROLL_DICE, 1, {"example": True})

@@ -73,6 +73,13 @@ class GameState:
     active_event_key: str = None
     message: str = "Partida lista."
     assisted_turn: bool = False
+    used_card_this_turn: bool = False
+    wildcard_indexes: set = field(default_factory=set)
+    golden_indexes: set = field(default_factory=set)
+    duplicator_indexes: set = field(default_factory=set)
+    score_multiplier: bool = False
+    force_natural_score: bool = False
+    score_overrides: dict = field(default_factory=dict)
     schema_version: int = 1
 
     @property
@@ -107,6 +114,13 @@ class GameState:
             "active_event_key": self.active_event_key,
             "message": self.message,
             "assisted_turn": self.assisted_turn,
+            "used_card_this_turn": self.used_card_this_turn,
+            "wildcard_indexes": sorted(self.wildcard_indexes),
+            "golden_indexes": sorted(self.golden_indexes),
+            "duplicator_indexes": sorted(self.duplicator_indexes),
+            "score_multiplier": self.score_multiplier,
+            "force_natural_score": self.force_natural_score,
+            "score_overrides": dict(self.score_overrides),
             "round_number": self.round_number,
             "active_player_index": self.active_player_index,
             "players": [
@@ -132,5 +146,12 @@ class GameState:
             active_event_key=data.get("active_event_key"),
             message=str(data.get("message", "Partida lista.")),
             assisted_turn=bool(data.get("assisted_turn", False)),
+            used_card_this_turn=bool(data.get("used_card_this_turn", False)),
+            wildcard_indexes=set(data.get("wildcard_indexes", [])),
+            golden_indexes=set(data.get("golden_indexes", [])),
+            duplicator_indexes=set(data.get("duplicator_indexes", [])),
+            score_multiplier=bool(data.get("score_multiplier", False)),
+            force_natural_score=bool(data.get("force_natural_score", False)),
+            score_overrides=dict(data.get("score_overrides", {})),
             schema_version=int(data.get("schema_version", 1)),
         )
