@@ -11,15 +11,16 @@ El modo online ya esta integrado en la interfaz Pygame y reutiliza la misma mesa
 - Soltar todos los dados.
 - Anotar categorias.
 - Comprar una carta del mercado.
-- Usar cartas tacticas principales.
+- Renovar mercado y descartar cartas de la mano.
+- Usar cartas tacticas, cartas fuertes y ataques suaves.
+- Usar habilidades de personajes.
+- Usar acciones manuales de evento cuando corresponda.
 - Pasar la fase de compra.
 - Ocultar la mano del rival en el estado publico.
 
 ## Que queda para una segunda etapa
 
 - Reconectar si un jugador se cae.
-- Ataques, habilidades y cartas avanzadas dentro del motor online.
-- Eventos completos con UI online.
 - Chat o mensajes rapidos.
 - Codigos de sala o servidor central.
 
@@ -98,9 +99,9 @@ salir                  cierra el cliente
 
 Categorias validas: `unos`, `doses`, `treses`, `cuatros`, `cincos`, `seises`, `escalera`, `full`, `poker`, `generala`, `doble`.
 
-## Cartas disponibles en online basico
+## Cartas disponibles en online
 
-Ya funcionan estas cartas tacticas:
+Ya funciona el mazo Plus completo en el motor online. Las cartas que piden objetivo usan el mismo criterio visual que el modo local:
 
 - Ajuste fino
 - Reintento
@@ -121,8 +122,22 @@ Ya funcionan estas cartas tacticas:
 - Apertura
 - Pulso controlado
 - Ultima oportunidad
+- Reciclaje
+- Mano estable
+- Correccion minima
+- Escudo
+- Rescate
+- No cuenta
+- Sabotaje
+- Candado
+- Robo
+- Intercambio
+- Mano pesada
+- Presion
+- Veto de mercado
+- Mesa fria
 
-El mercado online usa solo cartas compatibles con esta version. Las cartas de ataque y algunas interacciones especiales quedan para la version online visual, porque requieren seleccionar rival, bloquear categorias o resolver efectos entre turnos con mas UI.
+Los ataques siguen la regla de balance: se juegan antes de tirar y no se encadenan contra el mismo jugador en la misma ronda. Candado y Rescate usan la planilla como selector de categoria.
 
 ## Redes recomendadas
 

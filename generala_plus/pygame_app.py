@@ -9,7 +9,20 @@ from dataclasses import dataclass
 import pygame
 
 from .audio import SoundManager
-from .core.actions import BUY_MARKET_CARD, PASS_BUY, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_CARD, Action
+from .core.actions import (
+    BUY_MARKET_CARD,
+    DISCARD_HAND_CARD,
+    PASS_BUY,
+    RELEASE_ALL,
+    RENEW_MARKET_CARD,
+    ROLL_DICE,
+    SCORE_CATEGORY,
+    TOGGLE_HOLD,
+    USE_ABILITY,
+    USE_CARD,
+    USE_EVENT,
+    Action,
+)
 from .info_content import CHARACTER_SHORT_TEXT, INFO_TABS, card_detail, character_detail, event_detail, info_items
 from .net.pygame_client import PygameOnlineClient
 from .net.server import OnlineServer
@@ -779,8 +792,12 @@ class Generala:
         self.release_button.enabled = is_playing and online_turn and self.phase == "turn" and any(self.held) and not self.rolling
         self.roll_button.text = "ULTIMO TIRO" if self.rolls == self.max_rolls_current - 1 else "TIRAR DADOS"
         if self.plus_mode:
-            self.ability_button.enabled = self.state == "game" and self.can_use_active_ability()
-            self.event_button.enabled = self.state == "game" and self.can_use_event_action()
+            if self.state == "online_game":
+                self.ability_button.enabled = online_turn and self.phase == "turn" and self.active_event_key() != "clasica" and not self.ability_used_this_turn
+                self.event_button.enabled = online_turn and self.phase == "turn" and self.active_event_key() == "espejo" and self.rolls > 0 and not self.event_action_used
+            else:
+                self.ability_button.enabled = self.state == "game" and self.can_use_active_ability()
+                self.event_button.enabled = self.state == "game" and self.can_use_event_action()
             self.pass_button.enabled = is_playing and online_turn and self.phase == "buy" and not self.buy_transition_pending
 
     def handle_pause_event(self, event):
@@ -938,6 +955,19 @@ class Generala:
             player.hand = list(hand) if isinstance(hand, list) else []
             player.bonus_total = int(data.get("bonus_total", 0))
             player.generala_valid = bool(data.get("generala_valid", False))
+            player.temp_shield = bool(data.get("temp_shield", False))
+            player.temp_shield_until_turn = data.get("temp_shield_until_turn")
+            player.cancel_attack_used = bool(data.get("cancel_attack_used", False))
+            player.attacked_round = int(data.get("attacked_round", 0))
+            player.pending_attack = dict(data.get("pending_attack", {}))
+            player.blocked_category = data.get("blocked_category")
+            player.turns_played = int(data.get("turns_played", 0))
+            player.ability_last_turn = int(data.get("ability_last_turn", -999))
+            player.ability_once_used = bool(data.get("ability_once_used", False))
+            player.no_tach_streak = int(data.get("no_tach_streak", 0))
+            player.full_count = int(data.get("full_count", 0))
+            player.previous_scored_assisted = bool(data.get("previous_scored_assisted", False))
+            player.market_blocked = bool(data.get("market_blocked", False))
             self.players.append(player)
         self.turn = int(state.get("turn", 0))
         self.phase = state.get("phase", "turn")
@@ -957,12 +987,19 @@ class Generala:
         self.turn_assisted = bool(state.get("assisted_turn", False))
         self.card_used_this_turn = bool(state.get("used_card_this_turn", False))
         self.ability_used_this_turn = False
+        self.ability_used_this_turn = bool(state.get("used_ability_this_turn", False))
         self.wildcard_indexes = set(state.get("wildcard_indexes", []))
         self.golden_indexes = set(state.get("golden_indexes", []))
         self.duplicator_indexes = set(state.get("duplicator_indexes", []))
         self.score_multiplier = bool(state.get("score_multiplier", False))
         self.force_natural_score = bool(state.get("force_natural_score", False))
         self.score_overrides = dict(state.get("score_overrides", {}))
+        self.declarations = list(state.get("declarations", []))
+        self.event_action_used = bool(state.get("event_action_used", False))
+        self.no_coins_this_turn = bool(state.get("no_coins_this_turn", False))
+        self.pending_turn_attack = dict(state.get("pending_turn_attack", {}))
+        self.golden_bonus_used_round = int(state.get("golden_bonus_used_round", 0))
+        self.discount_buyers = set(state.get("discount_buyers", []))
         self.pending_action = None
         self.rolling = False
 
@@ -998,6 +1035,37 @@ class Generala:
             return
         if event.type != pygame.MOUSEBUTTONDOWN:
             return
+        if self.online_pending_card and state["phase"] == "turn":
+            pending_type = self.online_pending_card.get("type")
+            if pending_type in {"category", "ability_category"}:
+                category = self.category_at(pos)
+                if category:
+                    kind = USE_ABILITY if pending_type == "ability_category" else USE_CARD
+                    payload = {"args": [category]} if kind == USE_ABILITY else {"hand_index": self.online_pending_card["hand_index"], "args": [category]}
+                    self.send_online_action(kind, payload)
+                    self.online_pending_card = None
+                    return
+            if pending_type == "recycle_market":
+                for index, rect in enumerate(self.market_card_rects()):
+                    if index < len(self.market) and rect.collidepoint(pos):
+                        self.send_online_action(USE_CARD, {"hand_index": self.online_pending_card["hand_index"], "args": [str(index)]})
+                        self.online_pending_card = None
+                        return
+            if pending_type == "event_die" and state["rolls"] > 0:
+                for index in range(DICE_COUNT):
+                    if self.die_rect(index).inflate(16, 16).collidepoint(pos):
+                        self.send_online_action(USE_EVENT, {"args": [str(index + 1)]})
+                        self.online_pending_card = None
+                        return
+            if pending_type == "ability_die" and state["rolls"] > 0:
+                for index in range(DICE_COUNT):
+                    if self.die_rect(index).inflate(16, 16).collidepoint(pos):
+                        args = [str(index + 1)]
+                        if self.online_pending_card.get("adjust"):
+                            args.append("-" if event.button == 3 else "+")
+                        self.send_online_action(USE_ABILITY, {"args": args})
+                        self.online_pending_card = None
+                        return
         if self.online_pending_card and state["phase"] == "turn" and state["rolls"] > 0:
             for index in range(DICE_COUNT):
                 if self.die_rect(index).inflate(16, 16).collidepoint(pos):
@@ -1006,11 +1074,23 @@ class Generala:
         if not my_turn:
             return
         if state["phase"] == "turn":
+            if self.rolls == 0 and self.needs_forced_declaration():
+                category = self.category_at(pos)
+                if category:
+                    self.send_online_action(SCORE_CATEGORY, {"category": category})
+                    return
             if self.roll_button.handle_event(event, pos):
                 self.send_online_action(ROLL_DICE)
                 return
             if self.release_button.handle_event(event, pos):
                 self.send_online_action(RELEASE_ALL)
+                return
+            if self.ability_button.handle_event(event, pos):
+                self.start_online_ability_use()
+                return
+            if self.event_button.handle_event(event, pos):
+                self.online_pending_card = {"type": "event_die"}
+                self.online_message = "Ronda espejo: elegi un dado para invertir."
                 return
             if state["rolls"] > 0:
                 for index in range(DICE_COUNT):
@@ -1024,25 +1104,66 @@ class Generala:
                 if category:
                     self.send_online_action(SCORE_CATEGORY, {"category": category})
                     return
-                active_hand = self.current_player().hand
-                for index, rect in enumerate(self.hand_card_rects()):
-                    if index < len(active_hand) and rect.collidepoint(pos):
-                        self.start_online_card_use(index, active_hand[index])
-                        return
+            active_hand = self.current_player().hand
+            for index, rect in enumerate(self.hand_card_rects()):
+                if index < len(active_hand) and rect.collidepoint(pos):
+                    self.start_online_card_use(index, active_hand[index])
+                    return
         elif state["phase"] == "buy":
             if self.pass_button.handle_event(event, pos):
                 self.send_online_action(PASS_BUY)
                 return
             for index, rect in enumerate(self.market_card_rects()):
                 if index < len(self.market) and rect.collidepoint(pos):
-                    self.send_online_action(BUY_MARKET_CARD, {"index": index})
+                    if event.button == 3:
+                        self.send_online_action(RENEW_MARKET_CARD, {"index": index})
+                    else:
+                        self.send_online_action(BUY_MARKET_CARD, {"index": index})
+                    return
+            active_hand = self.current_player().hand
+            for index, rect in enumerate(self.hand_card_rects()):
+                if index < len(active_hand) and rect.collidepoint(pos):
+                    self.send_online_action(DISCARD_HAND_CARD, {"index": index})
                     return
 
     def start_online_card_use(self, hand_index, card_key):
-        no_arg = {"tirada_extra", "duplicador", "seguro", "escalera_rota", "generala_falsa", "milagro_controlado", "foco_numerico", "ancla", "apertura", "pulso_controlado", "ultima_oportunidad"}
+        no_arg = {
+            "tirada_extra",
+            "duplicador",
+            "seguro",
+            "mano_estable",
+            "correccion_minima",
+            "escudo",
+            "escalera_rota",
+            "generala_falsa",
+            "milagro_controlado",
+            "no_cuenta",
+            "foco_numerico",
+            "vision_clara",
+            "ancla",
+            "apertura",
+            "pulso_controlado",
+            "ultima_oportunidad",
+            "sabotaje",
+            "robo",
+            "intercambio",
+            "mano_pesada",
+            "presion",
+            "veto_mercado",
+            "mesa_fria",
+        }
         one_die = {"reintento", "espejo", "comodin", "dado_dorado", "dado_duplicador"}
+        category_cards = {"rescate", "candado"}
         if card_key in no_arg:
             self.send_online_action(USE_CARD, {"hand_index": hand_index, "args": []})
+            return
+        if card_key in category_cards:
+            self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "category"}
+            self.online_message = "Elegí una categoria en la planilla."
+            return
+        if card_key == "reciclaje":
+            self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "recycle_market"}
+            self.online_message = "Reciclaje: elegí una carta del mercado."
             return
         if card_key == "ajuste_fino":
             self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "adjust"}
@@ -1057,6 +1178,21 @@ class Generala:
             self.online_pending_card = {"hand_index": hand_index, "card_key": card_key, "type": "one_die"}
             return
         self.online_message = "Esa carta todavia no esta disponible en online visual."
+
+    def start_online_ability_use(self):
+        player = self.current_player()
+        character_key = player.character_key
+        if character_key in {"matematico"}:
+            self.online_pending_card = {"type": "ability_die", "adjust": True}
+            self.online_message = "Habilidad: click izquierdo +1, derecho -1 sobre un dado."
+        elif character_key in {"precavido", "audaz", "ilusionista"}:
+            self.online_pending_card = {"type": "ability_die"}
+            self.online_message = "Habilidad: elegí un dado."
+        elif character_key == "apostador":
+            self.online_pending_card = {"type": "ability_category"}
+            self.online_message = "Apostador: elegí una categoria antes de tirar."
+        else:
+            self.send_online_action(USE_ABILITY, {"args": []})
 
     def finish_online_card_selection(self, die_index, button):
         pending = self.online_pending_card

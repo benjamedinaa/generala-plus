@@ -9,6 +9,9 @@ BUY_MARKET_CARD = "buy_market_card"
 PASS_BUY = "pass_buy"
 USE_CARD = "use_card"
 USE_ABILITY = "use_ability"
+USE_EVENT = "use_event"
+RENEW_MARKET_CARD = "renew_market_card"
+DISCARD_HAND_CARD = "discard_hand_card"
 
 
 @dataclass

@@ -10,27 +10,7 @@ from .logging_utils import get_online_logger
 from .protocol import ACTION, ERROR, HELLO, INFO, STATE, WELCOME, Message
 from .wire import read_message, send_message
 
-ONLINE_CARD_POOL = {
-    "ajuste_fino",
-    "reintento",
-    "espejo",
-    "seguro",
-    "tirada_extra",
-    "copia",
-    "comodin",
-    "escalera_rota",
-    "ultima_oportunidad",
-    "dado_dorado",
-    "dado_maestro",
-    "duplicador",
-    "generala_falsa",
-    "milagro_controlado",
-    "foco_numerico",
-    "ancla",
-    "apertura",
-    "pulso_controlado",
-    "dado_duplicador",
-}
+ONLINE_CARD_POOL = set(build_deck())
 
 
 class ClientSlot:

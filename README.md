@@ -34,7 +34,7 @@ python -m generala_plus
 - `scripts/`: herramientas internas de mantenimiento y empaquetado.
 - `generala_plus/rules.py`: categorias, cartas, personajes, eventos, mazo y calculo de puntajes.
 - `generala_plus/core/`: estado serializable y motor base sin Pygame, preparado para online.
-- `generala_plus/net/`: cliente/servidor TCP basico para modo online y protocolo JSON.
+- `generala_plus/net/`: cliente/servidor TCP autoritativo para modo online y protocolo JSON.
 - `generala_plus/info_content.py`: contenido del manual, textos largos y explicaciones testeables.
 - `generala_plus/settings.py`: tamanos, layout y colores actuales.
 - `generala_plus/theme.py`: mapa de tema preparado para el cambio visual.
@@ -85,7 +85,7 @@ Tambien quedan launchers tecnicos por separado:
 
 El host escucha en el puerto `8765`. Si juegan fuera de la misma red, el host tiene que abrir ese puerto o usar una VPN.
 
-La partida online usa la misma mesa visual que el modo local. El host decide desde el menu si la mesa sera Clasica o Plus: en Clasico se juega con dados y planilla pura; en Plus aparecen paneles, mercado, mano, monedas y flujo de compra. La diferencia tecnica es que las acciones viajan al servidor y el estado vuelve sincronizado para ambos jugadores. Reconexion, ataques, habilidades y eventos avanzados quedan preparados como siguiente etapa.
+La partida online usa la misma mesa visual que el modo local. El host decide desde el menu si la mesa sera Clasica o Plus: en Clasico se juega con dados y planilla pura; en Plus aparecen paneles, mercado, mano, monedas, habilidades, ataques suaves, eventos de ronda y flujo de compra. La diferencia tecnica es que las acciones viajan al servidor y el estado vuelve sincronizado para ambos jugadores. La base jugable local/online ya comparte el mismo motor autoritativo; reconexion y servidor central quedan como mejoras futuras.
 
 Guia paso a paso para jugar con un amigo:
 

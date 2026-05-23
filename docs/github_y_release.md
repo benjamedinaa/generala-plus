@@ -14,7 +14,7 @@ Salida:
 release/Generala-Plus-vX.Y.Z-windows.zip
 ```
 
-Ese ZIP contiene el juego, launchers, assets, audio, docs y el online basico.
+Ese ZIP contiene el juego, launchers, assets, audio, docs y el online integrado.
 
 ## Conectar con GitHub
 

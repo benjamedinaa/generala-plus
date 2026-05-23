@@ -17,6 +17,19 @@ class PlayerState:
     offered_market_cards: set = field(default_factory=set)
     bonus_total: int = 0
     generala_valid: bool = False
+    temp_shield: bool = False
+    temp_shield_until_turn: int = None
+    cancel_attack_used: bool = False
+    attacked_round: int = 0
+    pending_attack: dict = field(default_factory=dict)
+    blocked_category: str = None
+    turns_played: int = 0
+    ability_last_turn: int = -999
+    ability_once_used: bool = False
+    no_tach_streak: int = 0
+    full_count: int = 0
+    previous_scored_assisted: bool = False
+    market_blocked: bool = False
 
     @property
     def total(self):
@@ -36,6 +49,19 @@ class PlayerState:
             "offered_market_cards": sorted(self.offered_market_cards),
             "bonus_total": self.bonus_total,
             "generala_valid": self.generala_valid,
+            "temp_shield": self.temp_shield,
+            "temp_shield_until_turn": self.temp_shield_until_turn,
+            "cancel_attack_used": self.cancel_attack_used,
+            "attacked_round": self.attacked_round,
+            "pending_attack": dict(self.pending_attack),
+            "blocked_category": self.blocked_category,
+            "turns_played": self.turns_played,
+            "ability_last_turn": self.ability_last_turn,
+            "ability_once_used": self.ability_once_used,
+            "no_tach_streak": self.no_tach_streak,
+            "full_count": self.full_count,
+            "previous_scored_assisted": self.previous_scored_assisted,
+            "market_blocked": self.market_blocked,
             "total": self.total,
             "complete": self.complete,
         }
@@ -54,6 +80,19 @@ class PlayerState:
             offered_market_cards=set(data.get("offered_market_cards", [])),
             bonus_total=int(data.get("bonus_total", 0)),
             generala_valid=bool(data.get("generala_valid", False)),
+            temp_shield=bool(data.get("temp_shield", False)),
+            temp_shield_until_turn=data.get("temp_shield_until_turn"),
+            cancel_attack_used=bool(data.get("cancel_attack_used", False)),
+            attacked_round=int(data.get("attacked_round", 0)),
+            pending_attack=dict(data.get("pending_attack", {})),
+            blocked_category=data.get("blocked_category"),
+            turns_played=int(data.get("turns_played", 0)),
+            ability_last_turn=int(data.get("ability_last_turn", -999)),
+            ability_once_used=bool(data.get("ability_once_used", False)),
+            no_tach_streak=int(data.get("no_tach_streak", 0)),
+            full_count=int(data.get("full_count", 0)),
+            previous_scored_assisted=bool(data.get("previous_scored_assisted", False)),
+            market_blocked=bool(data.get("market_blocked", False)),
         )
 
 
@@ -71,9 +110,18 @@ class GameState:
     market: list = field(default_factory=list)
     discard: list = field(default_factory=list)
     active_event_key: str = None
+    active_event_round: int = 0
     message: str = "Partida lista."
     assisted_turn: bool = False
     used_card_this_turn: bool = False
+    used_ability_this_turn: bool = False
+    event_action_used: bool = False
+    no_coins_this_turn: bool = False
+    declarations: list = field(default_factory=list)
+    pending_turn_attack: dict = field(default_factory=dict)
+    golden_bonus_used_round: int = 0
+    discount_buyers: set = field(default_factory=set)
+    round_scores: dict = field(default_factory=dict)
     wildcard_indexes: set = field(default_factory=set)
     golden_indexes: set = field(default_factory=set)
     duplicator_indexes: set = field(default_factory=set)
@@ -112,9 +160,18 @@ class GameState:
             "market": list(self.market),
             "discard_count": len(self.discard),
             "active_event_key": self.active_event_key,
+            "active_event_round": self.active_event_round,
             "message": self.message,
             "assisted_turn": self.assisted_turn,
             "used_card_this_turn": self.used_card_this_turn,
+            "used_ability_this_turn": self.used_ability_this_turn,
+            "event_action_used": self.event_action_used,
+            "no_coins_this_turn": self.no_coins_this_turn,
+            "declarations": [dict(item) for item in self.declarations],
+            "pending_turn_attack": dict(self.pending_turn_attack),
+            "golden_bonus_used_round": self.golden_bonus_used_round,
+            "discount_buyers": sorted(self.discount_buyers),
+            "round_scores": {str(key): dict(value) for key, value in self.round_scores.items()},
             "wildcard_indexes": sorted(self.wildcard_indexes),
             "golden_indexes": sorted(self.golden_indexes),
             "duplicator_indexes": sorted(self.duplicator_indexes),
@@ -144,9 +201,18 @@ class GameState:
             market=list(data.get("market", [])),
             discard=list(data.get("discard", [])),
             active_event_key=data.get("active_event_key"),
+            active_event_round=int(data.get("active_event_round", 0)),
             message=str(data.get("message", "Partida lista.")),
             assisted_turn=bool(data.get("assisted_turn", False)),
             used_card_this_turn=bool(data.get("used_card_this_turn", False)),
+            used_ability_this_turn=bool(data.get("used_ability_this_turn", False)),
+            event_action_used=bool(data.get("event_action_used", False)),
+            no_coins_this_turn=bool(data.get("no_coins_this_turn", False)),
+            declarations=[dict(item) for item in data.get("declarations", [])],
+            pending_turn_attack=dict(data.get("pending_turn_attack", {})),
+            golden_bonus_used_round=int(data.get("golden_bonus_used_round", 0)),
+            discount_buyers=set(data.get("discount_buyers", [])),
+            round_scores={int(key): dict(value) for key, value in data.get("round_scores", {}).items()},
             wildcard_indexes=set(data.get("wildcard_indexes", [])),
             golden_indexes=set(data.get("golden_indexes", [])),
             duplicator_indexes=set(data.get("duplicator_indexes", [])),

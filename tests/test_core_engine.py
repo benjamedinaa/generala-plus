@@ -1,7 +1,7 @@
 import unittest
 
 from generala_plus.core import Action, GameState, GeneralaEngine
-from generala_plus.core.actions import BUY_MARKET_CARD, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_CARD
+from generala_plus.core.actions import BUY_MARKET_CARD, PASS_BUY, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_ABILITY, USE_CARD, USE_EVENT
 from generala_plus.net.protocol import Message, action_from_message, action_message
 
 
@@ -78,6 +78,68 @@ class CoreEngineTest(unittest.TestCase):
 
         engine.apply(Action(SCORE_CATEGORY, 0, {"category": "generala"}))
         self.assertEqual(player.sheet["generala"], 45)
+
+    def test_online_plus_attacks_apply_on_next_turn(self):
+        engine = GeneralaEngine.new_game(["Ana", "Bruno"], character_keys=["agresivo", "matematico"], seed=21)
+        attacker = engine.state.active_player
+        target = engine.state.players[1]
+        attacker.hand = ["mano_pesada"]
+        engine.state.rolls = 0
+
+        engine.apply(Action(USE_CARD, 0, {"hand_index": 0, "args": []}))
+
+        self.assertEqual(target.pending_attack.get("type"), "mano_pesada")
+        self.assertTrue(engine.state.used_card_this_turn)
+
+        engine.state.rolls = 1
+        engine.apply(Action(SCORE_CATEGORY, 0, {"category": "unos"}))
+        engine.apply(Action(PASS_BUY, 0))
+
+        self.assertEqual(engine.state.active_player_index, 1)
+        self.assertEqual(engine.state.max_rolls, 2)
+
+    def test_online_plus_rescue_recycle_and_event_action(self):
+        engine = GeneralaEngine.new_game(["Ana", "Bruno"], seed=22)
+        player = engine.state.active_player
+        player.hand = ["rescate", "reciclaje"]
+        player.sheet["full"] = 0
+        engine.state.market = ["dado_maestro", "ajuste_fino", "tirada_extra"]
+
+        engine.apply(Action(USE_CARD, 0, {"hand_index": 0, "args": ["full"]}))
+        self.assertIsNone(player.sheet["full"])
+
+        engine.state.used_card_this_turn = False
+        engine.apply(Action(USE_CARD, 0, {"hand_index": 0, "args": ["0"]}))
+        self.assertIn("dado_maestro", player.hand)
+
+        player.hand = []
+        engine.state.used_card_this_turn = False
+        engine.state.active_event_key = "espejo"
+        engine.state.rolls = 1
+        engine.state.dice = [1, 2, 3, 4, 5]
+        engine.apply(Action(USE_EVENT, 0, {"args": ["1"]}))
+        self.assertEqual(engine.state.dice[0], 6)
+        self.assertTrue(engine.state.event_action_used)
+
+    def test_online_plus_character_ability(self):
+        engine = GeneralaEngine.new_game(["Ana", "Bruno"], character_keys=["matematico", "estratega"], seed=23)
+        engine.state.rolls = 1
+        engine.state.dice = [2, 2, 3, 4, 5]
+
+        engine.apply(Action(USE_ABILITY, 0, {"args": ["1", "+"]}))
+
+        self.assertEqual(engine.state.dice[0], 3)
+        self.assertTrue(engine.state.used_ability_this_turn)
+        self.assertTrue(engine.state.assisted_turn)
+
+    def test_online_forced_declaration_can_be_set_before_roll(self):
+        engine = GeneralaEngine.new_game(["Ana", "Bruno"], seed=24)
+        engine.state.declarations.append({"source": "presion", "category": None, "bonus": 0, "penalty": 0, "coin": 1})
+
+        engine.apply(Action(SCORE_CATEGORY, 0, {"category": "full"}))
+
+        self.assertEqual(engine.state.declarations[0]["category"], "full")
+        self.assertEqual(engine.state.rolls, 0)
 
     def test_protocol_roundtrip(self):
         original = Action(ROLL_DICE, 1, {"example": True})

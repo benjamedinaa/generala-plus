@@ -1,4 +1,4 @@
-from ..core.actions import BUY_MARKET_CARD, PASS_BUY, RELEASE_ALL, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_CARD, Action
+from ..core.actions import BUY_MARKET_CARD, DISCARD_HAND_CARD, PASS_BUY, RELEASE_ALL, RENEW_MARKET_CARD, ROLL_DICE, SCORE_CATEGORY, TOGGLE_HOLD, USE_ABILITY, USE_CARD, USE_EVENT, Action
 from ..rules import CARD_DEFS, CATEGORIES, category_name
 
 
@@ -30,13 +30,17 @@ CATEGORY_ALIASES = {
 }
 
 
-HELP_TEXT = """Comandos online basicos:
+HELP_TEXT = """Comandos online:
   tirar / roll                 tirar dados
   hold 1..5                    retener/liberar dado
   soltar / release             soltar todos
   anotar <categoria>           anotar categoria
   comprar 1..3                 comprar carta del mercado
+  renovar 1..3                 renovar una carta del mercado por 1 moneda
+  descartar 1..4               descartar carta de tu mano en fase compra
   usar <carta> [args]           usar carta de tu mano
+  habilidad [args]              usar habilidad del personaje
+  evento [dado]                 usar accion manual del evento, si existe
   pasar                        pasar fase de compra
   estado                       volver a mostrar estado
   ayuda                        mostrar ayuda
@@ -51,6 +55,9 @@ Cartas online principales:
   usar 1 2 6                   Dado maestro: dado 2 pasa a 6
   usar 2 1 4                   Copia: copia dado 1 sobre dado 4
   usar 3                       Tirada extra, Duplicador, Seguro, Ancla, Apertura
+  usar 1 full                  Rescate/Candado: categoria objetivo
+  habilidad 2 +                Matematico: dado 2 sube
+  evento 4                     Ronda espejo: invierte dado 4
 """
 
 
@@ -81,11 +88,25 @@ def parse_command(text, player_index):
             raise ValueError("Indica una carta del mercado: 1, 2 o 3.")
         index = int(parts[1]) - 1
         return Action(BUY_MARKET_CARD, player_index, {"index": index})
+    if verb in {"renovar", "renew"}:
+        if len(parts) < 2:
+            raise ValueError("Indica una carta del mercado: 1, 2 o 3.")
+        index = int(parts[1]) - 1
+        return Action(RENEW_MARKET_CARD, player_index, {"index": index})
+    if verb in {"descartar", "discard"}:
+        if len(parts) < 2:
+            raise ValueError("Indica una carta de tu mano.")
+        index = int(parts[1]) - 1
+        return Action(DISCARD_HAND_CARD, player_index, {"index": index})
     if verb in {"usar", "use", "carta"}:
         if len(parts) < 2:
             raise ValueError("Indica una carta de tu mano: 1, 2 o 3.")
         index = int(parts[1]) - 1
         return Action(USE_CARD, player_index, {"hand_index": index, "args": parts[2:]})
+    if verb in {"habilidad", "ability"}:
+        return Action(USE_ABILITY, player_index, {"args": parts[1:]})
+    if verb in {"evento", "event"}:
+        return Action(USE_EVENT, player_index, {"args": parts[1:]})
     if verb in {"pasar", "pass"}:
         return Action(PASS_BUY, player_index)
     return None
