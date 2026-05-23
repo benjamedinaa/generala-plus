@@ -103,15 +103,16 @@ def rounded_mask(size, radius):
 def draw_panel(surface, rect, fill=C_BG_PANEL, border=C_BORDER_SUBTLE, radius=None, alpha=235, glow=False):
     rect = pygame.Rect(rect)
     radius = RADIUS["panel"] if radius is None else radius
-    draw_soft_shadow(surface, rect, alpha=130, spread=20, radius=radius)
+    draw_soft_shadow(surface, rect, alpha=170, spread=22, radius=radius, y_offset=8)
     if glow:
-        draw_glow(surface, rect, C_WHITE, 18, 20, radius)
+        draw_glow(surface, rect, C_GOLD, 18, 20, radius)
     layer = pygame.Surface(rect.size, pygame.SRCALPHA)
     pygame.draw.rect(layer, (*fill, alpha), layer.get_rect(), border_radius=radius)
-    pygame.draw.rect(layer, (*border, 80), layer.get_rect(), width=1, border_radius=radius)
+    pygame.draw.rect(layer, (*border, 124), layer.get_rect(), width=1, border_radius=radius)
+    pygame.draw.rect(layer, (255, 236, 178, 22), layer.get_rect().inflate(-4, -4), width=1, border_radius=max(1, radius - 3))
     highlight = pygame.Surface(rect.size, pygame.SRCALPHA)
     for y in range(max(1, rect.h // 2)):
-        a = int(18 * (1 - y / max(1, rect.h // 2)))
+        a = int(24 * (1 - y / max(1, rect.h // 2)))
         pygame.draw.line(highlight, (255, 255, 255, a), (0, y), (rect.w, y))
     layer.blit(highlight, (0, 0))
     layer.blit(rounded_mask(rect.size, radius), (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
@@ -712,9 +713,9 @@ class DiceView:
         if rolling:
             y_offset += int(math.sin(pygame.time.get_ticks() / 32 + rect.x) * 7)
         draw_rect = rect.move(0, y_offset)
-        fill_top = C_WHITE_SOFT if not selected else (226, 224, 218)
-        fill_bottom = (214, 211, 204) if not selected else (184, 184, 181)
-        border = C_BORDER_ACTIVE if hovered or selectable else ((228, 226, 218) if selected else (95, 95, 95))
+        fill_top = (255, 248, 229) if not selected else (238, 226, 199)
+        fill_bottom = (205, 190, 166) if not selected else (171, 159, 139)
+        border = C_GOLD if selected or hovered or selectable else (130, 116, 90)
         if selectable:
             pulse = 34 + int(28 * (0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 160)))
             draw_glow(surface, draw_rect, C_WHITE, pulse, 18, RADIUS["dice"])
@@ -722,14 +723,16 @@ class DiceView:
             draw_glow(surface, draw_rect, C_WHITE, 28, 16, RADIUS["dice"])
         if selected:
             draw_glow(surface, draw_rect.inflate(4, 4), COLORS["platinum"], 26, 10, RADIUS["dice"])
-        draw_soft_shadow(surface, draw_rect, alpha=145, spread=16, radius=RADIUS["dice"], y_offset=9)
+        draw_soft_shadow(surface, draw_rect, alpha=185, spread=18, radius=RADIUS["dice"], y_offset=10)
         draw_vertical_gradient(surface, draw_rect, fill_top, fill_bottom, RADIUS["dice"])
-        pygame.draw.rect(surface, border, draw_rect, width=1, border_radius=RADIUS["dice"])
+        pygame.draw.rect(surface, (255, 255, 255, 80), draw_rect.inflate(-9, -9), width=1, border_radius=RADIUS["dice"] - 5)
+        pygame.draw.rect(surface, border, draw_rect, width=2 if selected else 1, border_radius=RADIUS["dice"])
+        pygame.draw.rect(surface, (75, 59, 38), draw_rect.inflate(7, 7), width=1, border_radius=RADIUS["dice"] + 3)
         if selected:
             inset = draw_rect.inflate(-8, -8)
             pygame.draw.rect(surface, (255, 255, 255, 72), inset, width=1, border_radius=RADIUS["dice"] - 4)
             corner = 15
-            bracket_color = (*COLORS["platinum"], 150)
+            bracket_color = (*C_GOLD, 190)
             selected_layer = pygame.Surface(draw_rect.size, pygame.SRCALPHA)
             points = [
                 ((10, 12), (10 + corner, 12)), ((10, 12), (10, 12 + corner)),
@@ -742,7 +745,7 @@ class DiceView:
             pygame.draw.rect(selected_layer, (255, 255, 255, 18), selected_layer.get_rect().inflate(-18, -18), border_radius=RADIUS["dice"] - 8)
             surface.blit(selected_layer, draw_rect.topleft)
         pip_radius = max(7, draw_rect.w // 12)
-        pip_color = C_BG_DEEP
+        pip_color = (19, 17, 14)
         for px, py in DiceView.PIPS.get(value, DiceView.PIPS[1]):
             center = (draw_rect.x + int(draw_rect.w * px), draw_rect.y + int(draw_rect.h * py))
             glow = pygame.Surface((pip_radius * 4, pip_radius * 4), pygame.SRCALPHA)
@@ -750,9 +753,10 @@ class DiceView:
             pygame.draw.circle(glow, (255, 255, 255, 42), (local[0] - 2, local[1] - 2), pip_radius + 1)
             pygame.draw.circle(glow, (0, 0, 0, 54), (local[0] + 1, local[1] + 2), pip_radius + 1)
             surface.blit(glow, glow.get_rect(center=center))
+            pygame.draw.circle(surface, (0, 0, 0, 42), (center[0] + 1, center[1] + 2), pip_radius + 1)
             pygame.draw.circle(surface, pip_color, center, pip_radius)
-            pygame.draw.circle(surface, (20, 20, 20), center, pip_radius - 2)
-            pygame.draw.circle(surface, (78, 78, 76), (center[0] - 1, center[1] - 1), max(1, pip_radius - 4), 1)
+            pygame.draw.circle(surface, (40, 34, 26), center, max(1, pip_radius - 2))
+            pygame.draw.circle(surface, (112, 94, 68), (center[0] - 1, center[1] - 1), max(1, pip_radius - 4), 1)
         if marks:
             mark_font = pygame.font.SysFont("JetBrains Mono, Consolas, monospace", 12, bold=True)
             mark = mark_font.render("/".join(marks), True, C_GOLD)
@@ -974,9 +978,10 @@ class CardView:
             else:
                 draw_soft_shadow(surface, rect, alpha=130, spread=14, radius=RADIUS["card"], y_offset=8)
         layer = pygame.Surface(rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(layer, (*C_BG_ELEVATED, alpha), layer.get_rect(), border_radius=RADIUS["card"])
+        pygame.draw.rect(layer, (*C_BG_PANEL, alpha), layer.get_rect(), border_radius=RADIUS["card"])
         border_alpha = 175 if active else (130 if dimmed else 70)
         pygame.draw.rect(layer, (*accent, border_alpha), layer.get_rect(), width=2 if selected else 1, border_radius=RADIUS["card"])
+        pygame.draw.rect(layer, (255, 236, 178, 22 if active else 10), layer.get_rect().inflate(-5, -5), width=1, border_radius=RADIUS["card"] - 4)
         if card_key in ATTACK_CARDS:
             for x in range(-rect.h, rect.w, 14):
                 pygame.draw.line(layer, (139, 30, 30, 7 if active else 3), (x, rect.h), (x + rect.h, 0), 1)

@@ -297,20 +297,20 @@ class Button:
     def draw(self, surface, font, mouse_pos, pulse=False):
         hovered = self.enabled and self.rect.collidepoint(mouse_pos)
         if self.enabled and self.variant == "secondary":
-            bg = C_BG_ELEVATED if hovered else C_BG_PANEL
-            fg = C_WHITE if hovered else C_GRAY_LIGHT
-            border = C_BORDER_ACTIVE if hovered else C_BORDER_SUBTLE
-            glow_alpha = 12 if hovered else 0
+            bg = (24, 25, 23) if hovered else (12, 14, 14)
+            fg = C_WHITE_SOFT if hovered else (213, 196, 164)
+            border = C_GOLD if hovered else C_BORDER_SUBTLE
+            glow_alpha = 16 if hovered else 0
         elif self.enabled and self.variant == "danger":
             bg = (20, 8, 8) if hovered else (12, 7, 7)
             fg = (224, 152, 152) if hovered else (180, 105, 105)
             border = C_RED_ERROR
             glow_alpha = 16 if hovered else 0
         elif self.enabled:
-            bg = (232, 232, 232) if hovered else C_WHITE
+            bg = (255, 246, 218) if hovered else (244, 226, 185)
             fg = C_BG_DEEP
-            border = None
-            glow_alpha = 50 if hovered else 30
+            border = C_GOLD
+            glow_alpha = 58 if hovered else 28
         else:
             bg = C_BG_PANEL if self.variant == "secondary" else C_BG_ELEVATED
             fg = C_GRAY_DARK
@@ -320,10 +320,12 @@ class Button:
         if pulse:
             glow_alpha = 35 + int(25 * (0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 240)))
         if glow_alpha:
-            draw_glow_rect(surface, self.rect, C_WHITE, glow_alpha, 18)
-        pygame.draw.rect(surface, bg, self.rect, border_radius=8)
+            draw_glow_rect(surface, self.rect, C_GOLD if self.variant != "primary" else C_WHITE, glow_alpha, 18)
+        draw_soft_shadow(surface, self.rect, alpha=90, spread=10, radius=14, y_offset=5)
+        pygame.draw.rect(surface, bg, self.rect, border_radius=14)
         if border:
-            pygame.draw.rect(surface, border, self.rect, width=1, border_radius=8)
+            pygame.draw.rect(surface, border, self.rect, width=1, border_radius=14)
+            pygame.draw.rect(surface, (255, 255, 255, 32), self.rect.inflate(-7, -7), width=1, border_radius=10)
         text = font.render(self.text, True, fg)
         surface.blit(text, text.get_rect(center=self.rect.center))
 
@@ -2665,11 +2667,14 @@ class Generala:
         t = pygame.time.get_ticks() / 1000
         logo_scale = 1 + 0.012 * math.sin(t * 1.4)
         logo_font = pygame.font.SysFont("Space Grotesk, Sohne, Arial", int(82 * logo_scale), bold=True)
-        logo = logo_font.render("GENERALA", True, C_WHITE_SOFT)
-        logo_rect = logo.get_rect(center=(SCREEN_W // 2, 88))
-        if logo_rect.y < 36:
-            logo_rect.y = 36
-        self.canvas.blit(logo, logo_rect)
+        gen = logo_font.render("GENERALA", True, C_WHITE_SOFT)
+        plus = logo_font.render(" PLUS", True, C_GOLD) if self.plus_mode else None
+        total_w = gen.get_width() + (plus.get_width() if plus else 0)
+        logo_x = SCREEN_W // 2 - total_w // 2
+        logo_y = 48
+        self.canvas.blit(gen, (logo_x, logo_y))
+        if plus:
+            self.canvas.blit(plus, (logo_x + gen.get_width() - 2, logo_y))
         brand_line = pygame.Rect(SCREEN_W // 2 - 210, 132, 420, 1)
         pygame.draw.line(self.canvas, (*C_GOLD, 90), brand_line.midleft, brand_line.midright, 1)
         subtitle_text = "PLUS EDITION" if self.plus_mode else "CASINO TABLE MODE"
@@ -2930,9 +2935,25 @@ class Generala:
     def draw_header_bar_title(self, title_text):
         header = pygame.Rect(HEADER_RECT)
         pygame.draw.rect(self.canvas, C_BG_DEEP, header)
-        pygame.draw.line(self.canvas, C_BORDER_SUBTLE, (24, header.bottom), (SCREEN_W - 24, header.bottom), 1)
-        title = self.font_turn.render(title_text, True, C_WHITE_SOFT)
-        self.canvas.blit(title, (42, 20))
+        pygame.draw.line(self.canvas, C_GOLD, (0, header.bottom), (SCREEN_W, header.bottom), 1)
+        if "PLUS" in title_text:
+            self.draw_brand_title(42, 20, large=False)
+        else:
+            title = self.font_turn.render(title_text, True, C_WHITE_SOFT)
+            self.canvas.blit(title, (42, 20))
+
+    def draw_brand_title(self, x, y, large=True):
+        if large:
+            gen_font = pygame.font.SysFont("Space Grotesk, Sohne, Arial", 82, bold=True)
+            plus_font = pygame.font.SysFont("Space Grotesk, Sohne, Arial", 82, bold=True)
+        else:
+            gen_font = self.font_turn
+            plus_font = self.font_turn
+        gen = gen_font.render("GENERALA", True, C_WHITE_SOFT)
+        self.canvas.blit(gen, (x, y))
+        if self.plus_mode:
+            plus = plus_font.render(" PLUS", True, C_GOLD)
+            self.canvas.blit(plus, (x + gen.get_width() - 2, y))
 
     def draw_online_header(self, state, player_index):
         self.draw_header_bar_title("GENERALA PLUS")
@@ -3041,6 +3062,7 @@ class Generala:
     def draw_game(self):
         self.update_buttons()
         self.draw_header()
+        self.draw_casino_table_frame()
         self.draw_status_capsule()
         if self.plus_mode and self.phase == "buy":
             self.draw_buy_phase_spotlight()
@@ -3068,6 +3090,26 @@ class Generala:
             if self.plus_mode:
                 self.pass_button.draw(self.canvas, self.font_button, self.mouse_pos)
 
+    def draw_casino_table_frame(self):
+        outer = pygame.Rect(302, 76, 660, 396)
+        felt = pygame.Rect(326, 92, 612, 354)
+        draw_soft_shadow(self.canvas, outer, alpha=210, spread=28, radius=94, y_offset=12)
+        ring = pygame.Surface(outer.size, pygame.SRCALPHA)
+        pygame.draw.rect(ring, (33, 25, 16, 235), ring.get_rect(), border_radius=92)
+        pygame.draw.rect(ring, (*C_GOLD, 92), ring.get_rect(), width=2, border_radius=92)
+        pygame.draw.rect(ring, (255, 241, 196, 32), ring.get_rect().inflate(-8, -8), width=1, border_radius=86)
+        for x in range(-outer.h, outer.w, 34):
+            pygame.draw.line(ring, (255, 227, 170, 11), (x, outer.h), (x + outer.h, 0), 1)
+        self.canvas.blit(ring, outer.topleft)
+
+        felt_layer = pygame.Surface(felt.size, pygame.SRCALPHA)
+        pygame.draw.rect(felt_layer, (14, 38, 26, 236), felt_layer.get_rect(), border_radius=78)
+        for y in range(0, felt.h, 3):
+            pygame.draw.line(felt_layer, (255, 255, 255, 4), (18, y), (felt.w - 18, y), 1)
+        pygame.draw.rect(felt_layer, (*C_GOLD, 96), felt_layer.get_rect(), width=1, border_radius=78)
+        pygame.draw.rect(felt_layer, (0, 0, 0, 70), felt_layer.get_rect().inflate(-18, -18), width=1, border_radius=66)
+        self.canvas.blit(felt_layer, felt.topleft)
+
     def draw_buy_phase_spotlight(self):
         right = pygame.Rect(RIGHT_PANEL)
         left = pygame.Rect(LEFT_PANEL)
@@ -3086,15 +3128,16 @@ class Generala:
     def draw_header(self):
         header = pygame.Rect(HEADER_RECT)
         pygame.draw.rect(self.canvas, C_BG_DEEP, header)
-        pygame.draw.line(self.canvas, C_BORDER_SUBTLE, (24, header.bottom), (SCREEN_W - 24, header.bottom), 1)
-        title_text = "GENERALA PLUS" if self.plus_mode else "GENERALA"
-        title = self.font_turn.render(title_text, True, C_WHITE_SOFT)
-        self.canvas.blit(title, (42, 20))
+        pygame.draw.line(self.canvas, C_GOLD, (0, header.bottom), (SCREEN_W, header.bottom), 1)
+        self.draw_brand_title(42, 20, large=False)
         active = self.current_player().name.upper()
         turn_label = self.font_label.render(f"TURNO DE {active}", True, C_WHITE_SOFT)
         self.canvas.blit(turn_label, turn_label.get_rect(center=(SCREEN_W // 2, 28)))
         round_label = self.font_hint.render(f"RONDA {self.round_number():02d}", True, C_GRAY_MID)
         self.canvas.blit(round_label, round_label.get_rect(center=(SCREEN_W // 2, 52)))
+        pygame.draw.line(self.canvas, (*C_GOLD, 120), (SCREEN_W // 2 - 116, 43), (SCREEN_W // 2 - 34, 43), 1)
+        pygame.draw.line(self.canvas, (*C_GOLD, 120), (SCREEN_W // 2 + 34, 43), (SCREEN_W // 2 + 116, 43), 1)
+        pygame.draw.circle(self.canvas, C_GOLD, (SCREEN_W // 2, 43), 2)
         rolls = self.font_label.render(f"TIRADAS {self.rolls}/{self.max_rolls_current}", True, C_WHITE_SOFT)
         self.canvas.blit(rolls, rolls.get_rect(midright=(SCREEN_W - 190, 28)))
         menu = self.font_hint.render("H AYUDA   F11 PANTALLA", True, C_GRAY_MID)
@@ -3106,8 +3149,11 @@ class Generala:
         border = C_GOLD if pulse else C_BORDER_SUBTLE
         if pulse:
             draw_glow(self.canvas, rect, C_GOLD, 24 + 18 * math.sin(pygame.time.get_ticks() / 180), 16, 18)
-        pygame.draw.rect(self.canvas, (*C_BG_DEEP, 255), rect, border_radius=18)
+        pygame.draw.rect(self.canvas, (*C_BG_DEEP, 238), rect, border_radius=18)
         pygame.draw.rect(self.canvas, border, rect, width=1, border_radius=18)
+        sparkle = self.font_body_bold.render("*", True, C_WHITE_SOFT)
+        self.canvas.blit(sparkle, sparkle.get_rect(center=(rect.x + 22, rect.centery + 1)))
+        self.canvas.blit(sparkle, sparkle.get_rect(center=(rect.right - 22, rect.centery + 1)))
         message = self.font_hint.render(trim_text(self.message, self.font_hint, rect.w - 44), True, C_WHITE_SOFT)
         self.canvas.blit(message, message.get_rect(center=rect.center))
 
