@@ -18,3 +18,6 @@ artifacts/
 .venv/
 venv/
 env/
+
+.obsidian/
+docs/obsidian/.obsidian/
